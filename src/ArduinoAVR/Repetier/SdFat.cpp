@@ -4388,13 +4388,14 @@ void SdFile::writeln_P(FSTRINGPARAM(str)) {
 
 // ================ SdFatUtil.cpp ===================
 
+extern int  __bss_end;
+extern int* __brkval;
+
 //------------------------------------------------------------------------------
 /** Amount of free RAM
  * \return The number of free bytes.
  */
 int SdFatUtil::FreeRam() {
-  extern int  __bss_end;
-  extern int* __brkval;
   int free_memory;
   if (reinterpret_cast<int>(__brkval) == 0) {
     // if no heap use from end of bss section

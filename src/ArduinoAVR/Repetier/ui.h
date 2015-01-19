@@ -389,8 +389,8 @@ extern const int8_t encoder_table[16] PROGMEM ;
 #define SDCARDDETECT 81
 #undef SDCARDDETECTINVERTED
 #define SDCARDDETECTINVERTED 0
-#undef SDSUPPORT
-#define SDSUPPORT 1
+//#undef SDSUPPORT
+//#define SDSUPPORT 1
 #endif
 
 // Maximum size of a row - if row is larger, text gets scrolled
@@ -1065,7 +1065,7 @@ void uiInitKeys() {
   UI_KEYS_INIT_BUTTON_LOW(UI_KILL_PIN);
 }
 void uiCheckKeys(int &action) {
- UI_KEYS_CLICKENCODER_LOW_REV(UI_ENCODER_A,UI_ENCODER_B);
+ UI_KEYS_CLICKENCODER_LOW(UI_ENCODER_A,UI_ENCODER_B);
  UI_KEYS_BUTTON_LOW(UI_ENCODER_CLICK,UI_ACTION_OK);
  UI_KEYS_BUTTON_LOW(UI_KILL_PIN,UI_ACTION_KILL);
 }

@@ -442,6 +442,8 @@ public:
     // Only called from bresenham -> inside interrupt handle
     inline void updateAdvanceSteps(speed_t v,uint8_t max_loops,bool accelerate)
     {
+        static int filteredSteps[17] = {0};
+        int i;
 #if USE_ADVANCE
         if(!Printer::isAdvanceActivated()) return;
 #if ENABLE_QUADRATIC_ADVANCE
@@ -470,7 +472,16 @@ public:
         HAL::allowInterrupts();
         Printer::advanceExecuted = advanceTarget;
 #else
-        int tred = HAL::mulu6xu16shift16(v, advanceL);
+//        int tred = HAL::mulu6xu16shift16(v, advanceL);
+        int tred = 0;
+        filteredSteps[16] = HAL::mulu6xu16shift16(v,advanceL);
+        for (i = 0; i < 16; i++)
+        {
+            tred += filteredSteps[i];
+            filteredSteps[i] = filteredSteps[i + 1];
+        }
+        tred >>= 4;
+
         HAL::forbidInterrupts();
         Printer::extruderStepsNeeded += tred - Printer::advanceStepsSet;
         if(tred > 0 && Printer::advanceStepsSet <= 0)

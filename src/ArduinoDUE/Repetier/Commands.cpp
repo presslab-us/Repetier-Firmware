@@ -67,6 +67,7 @@ void Commands::commandLoop()
 
 void Commands::checkForPeriodicalActions(bool allowNewMoves)
 {
+    Printer::handleInterruptEvent();
     if(!executePeriodical) return;
     executePeriodical = 0;
     Extruder::manageTemperatures();
@@ -158,7 +159,7 @@ void Commands::printCurrentPosition(FSTRINGPARAM(s))
 void Commands::printTemperatures(bool showRaw)
 {
     float temp = Extruder::current->tempControl.currentTemperatureC;
-#if HEATED_BED_SENSOR_TYPE==0
+#if HEATED_BED_SENSOR_TYPE == 0
     Com::printF(Com::tTColon,temp);
     Com::printF(Com::tSpaceSlash,Extruder::current->tempControl.targetTemperatureC,0);
 #else
@@ -170,16 +171,16 @@ void Commands::printTemperatures(bool showRaw)
     if(showRaw)
     {
         Com::printF(Com::tSpaceRaw,(int)NUM_EXTRUDER);
-        Com::printF(Com::tColon,(1023<<(2-ANALOG_REDUCE_BITS))-heatedBedController.currentTemperature);
+        Com::printF(Com::tColon,(1023 << (2 - ANALOG_REDUCE_BITS)) - heatedBedController.currentTemperature);
     }
     Com::printF(Com::tSpaceBAtColon,(pwm_pos[heatedBedController.pwmIndex])); // Show output of autotune when tuning!
 #endif
 #endif
 #if TEMP_PID
-    Com::printF(Com::tSpaceAtColon,(autotuneIndex==255?pwm_pos[Extruder::current->id]:pwm_pos[autotuneIndex])); // Show output of autotune when tuning!
+    Com::printF(Com::tSpaceAtColon,(autotuneIndex == 255 ? pwm_pos[Extruder::current->id] : pwm_pos[autotuneIndex])); // Show output of autotune when tuning!
 #endif
-#if NUM_EXTRUDER>1 && MIXING_EXTRUDER == 0
-    for(uint8_t i=0; i<NUM_EXTRUDER; i++)
+#if NUM_EXTRUDER > 1 && MIXING_EXTRUDER == 0
+    for(uint8_t i = 0; i < NUM_EXTRUDER; i++)
     {
         Com::printF(Com::tSpaceT,(int)i);
         Com::printF(Com::tColon,extruder[i].tempControl.currentTemperatureC);
@@ -191,7 +192,7 @@ void Commands::printTemperatures(bool showRaw)
         if(showRaw)
         {
             Com::printF(Com::tSpaceRaw,(int)i);
-            Com::printF(Com::tColon,(1023<<(2-ANALOG_REDUCE_BITS))-extruder[i].tempControl.currentTemperature);
+            Com::printF(Com::tColon,(1023 << (2 - ANALOG_REDUCE_BITS)) - extruder[i].tempControl.currentTemperature);
         }
     }
 #endif
@@ -218,6 +219,7 @@ void Commands::changeFlowrateMultiply(int factor)
     Com::printFLN(Com::tFlowMultiply, factor);
 }
 
+uint8_t fanKickstart;
 void Commands::setFanSpeed(int speed,bool wait)
 {
 #if FAN_PIN>-1 && FEATURE_FAN_CONTROL
@@ -226,28 +228,33 @@ void Commands::setFanSpeed(int speed,bool wait)
     if(wait)
         Commands::waitUntilEndOfAllMoves(); // use only if neededthis to change the speed exactly at that point, but it may cause blobs if you do!
     if(speed != pwm_pos[NUM_EXTRUDER + 2])
+    {
         Com::printFLN(Com::tFanspeed,speed); // send only new values to break update loops!
+#if FAN_KICKSTART_TIME
+        if(fanKickstart == 0 && speed > pwm_pos[NUM_EXTRUDER + 2]) fanKickstart = FAN_KICKSTART_TIME/100;
+#endif
+    }
     pwm_pos[NUM_EXTRUDER + 2] = speed;
 #endif
 }
 
 void Commands::reportPrinterUsage()
 {
-#if EEPROM_MODE!=0
+#if EEPROM_MODE != 0
     float dist = Printer::filamentPrinted * 0.001 + HAL::eprGetFloat(EPR_PRINTING_DISTANCE);
-    Com::printF(Com::tPrintedFilament,dist,2);
+    Com::printF(Com::tPrintedFilament, dist, 2);
     Com::printF(Com::tSpacem);
     bool alloff = true;
-    for(uint8_t i=0; i<NUM_EXTRUDER; i++)
-        if(tempController[i]->targetTemperatureC>15) alloff = false;
+    for(uint8_t i = 0; i < NUM_EXTRUDER; i++)
+        if(tempController[i]->targetTemperatureC > 15) alloff = false;
 
     int32_t seconds = (alloff ? 0 : (HAL::timeInMilliseconds() - Printer::msecondsPrinting) / 1000) + HAL::eprGetInt32(EPR_PRINTING_TIME);
     int32_t tmp = seconds / 86400;
     seconds -= tmp * 86400;
     Com::printF(Com::tPrintingTime,tmp);
-    tmp=seconds / 3600;
+    tmp = seconds / 3600;
     Com::printF(Com::tSpaceDaysSpace,tmp);
-    seconds-=tmp * 3600;
+    seconds -= tmp * 3600;
     tmp = seconds / 60;
     Com::printF(Com::tSpaceHoursSpace,tmp);
     Com::printFLN(Com::tSpaceMin);
@@ -712,6 +719,16 @@ void Commands::processGCode(GCode *com)
 #if FEATURE_AUTOLEVEL
     case 32: // G32 Auto-Bed leveling
     {
+#if DISTORTION_CORRECTION
+        Printer::distortion.disable(true); // if level has changed, distortion is also invalid
+#endif
+#if DRIVE_SYSTEM == DELTA
+        // It is not possible to go to the edges at the top, also users try
+        // it often and wonder why the coordinate system is then wrong.
+        // For that reason we ensure a correct behaviour by code.
+        Printer::homeAxis(true, true, true);
+        Printer::moveTo(IGNORE_COORDINATE, IGNORE_COORDINATE, EEPROM::zProbeBedDistance() + EEPROM::zProbeHeight(), IGNORE_COORDINATE, Printer::homingFeedrate[Z_AXIS]);
+#endif
         GCode::executeFString(Com::tZProbeStartScript);
         //bool iterate = com->hasP() && com->P>0;
         Printer::coordinateOffset[X_AXIS] = Printer::coordinateOffset[Y_AXIS] = Printer::coordinateOffset[Z_AXIS] = 0;
@@ -1194,9 +1211,9 @@ void Commands::processMCode(GCode *com)
         if (com->hasS())
         {
             if(com->hasT())
-                Extruder::setTemperatureForExtruder(com->S,com->T,com->hasF() && com->F>0);
+                Extruder::setTemperatureForExtruder(com->S, com->T, com->hasF() && com->F > 0);
             else
-                Extruder::setTemperatureForExtruder(com->S,Extruder::current->id,com->hasF() && com->F>0);
+                Extruder::setTemperatureForExtruder(com->S, Extruder::current->id, com->hasF() && com->F > 0);
         }
 #endif
         break;
@@ -1204,13 +1221,13 @@ void Commands::processMCode(GCode *com)
         if(reportTempsensorError()) break;
         previousMillisCmd = HAL::timeInMilliseconds();
         if(Printer::debugDryrun()) break;
-        if (com->hasS()) Extruder::setHeatedBedTemperature(com->S,com->hasF() && com->F>0);
+        if (com->hasS()) Extruder::setHeatedBedTemperature(com->S,com->hasF() && com->F > 0);
         break;
     case 105: // M105  get temperature. Always returns the current temperature, doesn't wait until move stopped
         printTemperatures(com->hasX());
         break;
     case 109: // M109 - Wait for extruder heater to reach target.
-#if NUM_EXTRUDER>0
+#if NUM_EXTRUDER > 0
     {
         if(reportTempsensorError()) break;
         previousMillisCmd = HAL::timeInMilliseconds();
@@ -1218,10 +1235,10 @@ void Commands::processMCode(GCode *com)
         UI_STATUS_UPD(UI_TEXT_HEATING_EXTRUDER);
         Commands::waitUntilEndOfAllMoves();
         Extruder *actExtruder = Extruder::current;
-        if(com->hasT() && com->T<NUM_EXTRUDER) actExtruder = &extruder[com->T];
-        if (com->hasS()) Extruder::setTemperatureForExtruder(com->S,actExtruder->id,com->hasF() && com->F>0);
+        if(com->hasT() && com->T < NUM_EXTRUDER) actExtruder = &extruder[com->T];
+        if (com->hasS()) Extruder::setTemperatureForExtruder(com->S,actExtruder->id,com->hasF() && com->F > 0);
 #if defined(SKIP_M109_IF_WITHIN) && SKIP_M109_IF_WITHIN > 0
-        if(abs(actExtruder->tempControl.currentTemperatureC - actExtruder->tempControl.targetTemperatureC)<(SKIP_M109_IF_WITHIN)) break; // Already in range
+        if(abs(actExtruder->tempControl.currentTemperatureC - actExtruder->tempControl.targetTemperatureC) < (SKIP_M109_IF_WITHIN)) break; // Already in range
 #endif
         bool dirRising = actExtruder->tempControl.targetTemperature > actExtruder->tempControl.currentTemperature;
         millis_t printedTime = HAL::timeInMilliseconds();
@@ -1249,18 +1266,18 @@ void Commands::processMCode(GCode *com)
 #endif
             if((waituntil == 0 &&
                     (dirRising ? actExtruder->tempControl.currentTemperatureC >= actExtruder->tempControl.targetTemperatureC - 1
-                     : actExtruder->tempControl.currentTemperatureC <= actExtruder->tempControl.targetTemperatureC+1))
+                     : actExtruder->tempControl.currentTemperatureC <= actExtruder->tempControl.targetTemperatureC + 1))
 #if defined(TEMP_HYSTERESIS) && TEMP_HYSTERESIS>=1
-                    || (waituntil!=0 && (abs(actExtruder->tempControl.currentTemperatureC - actExtruder->tempControl.targetTemperatureC))>TEMP_HYSTERESIS)
+                    || (waituntil!=0 && (abs(actExtruder->tempControl.currentTemperatureC - actExtruder->tempControl.targetTemperatureC)) > TEMP_HYSTERESIS)
 #endif
               )
             {
-                waituntil = currentTime+1000UL*(millis_t)actExtruder->watchPeriod; // now wait for temp. to stabalize
+                waituntil = currentTime + 1000UL*(millis_t)actExtruder->watchPeriod; // now wait for temp. to stabalize
             }
         }
-        while(waituntil==0 || (waituntil!=0 && (millis_t)(waituntil-currentTime)<2000000000UL));
+        while(waituntil == 0 || (waituntil != 0 && (millis_t)(waituntil-currentTime) < 2000000000UL));
 #if RETRACT_DURING_HEATUP
-        if (retracted && actExtruder==Extruder::current)
+        if (retracted && actExtruder == Extruder::current)
         {
             PrintLine::moveRelativeDistanceInSteps(0,0,0,actExtruder->waitRetractUnits * Printer::axisStepsPerMM[E_AXIS],actExtruder->maxFeedrate,false,false);
         }
@@ -1276,9 +1293,9 @@ void Commands::processMCode(GCode *com)
         UI_STATUS_UPD(UI_TEXT_HEATING_BED);
         Commands::waitUntilEndOfAllMoves();
 #if HAVE_HEATED_BED
-        if (com->hasS()) Extruder::setHeatedBedTemperature(com->S,com->hasF() && com->F>0);
+        if (com->hasS()) Extruder::setHeatedBedTemperature(com->S,com->hasF() && com->F > 0);
 #if defined(SKIP_M190_IF_WITHIN) && SKIP_M190_IF_WITHIN>0
-        if(abs(heatedBedController.currentTemperatureC-heatedBedController.targetTemperatureC)<SKIP_M190_IF_WITHIN) break;
+        if(abs(heatedBedController.currentTemperatureC-heatedBedController.targetTemperatureC) < SKIP_M190_IF_WITHIN) break;
 #endif
         codenum = HAL::timeInMilliseconds();
         while(heatedBedController.currentTemperatureC + 0.5 < heatedBedController.targetTemperatureC)
@@ -1296,35 +1313,19 @@ void Commands::processMCode(GCode *com)
         previousMillisCmd = HAL::timeInMilliseconds();
         break;
     case 116: // Wait for temperatures to reach target temperature
-        if(Printer::debugDryrun()) break;
-        {
-            bool allReached = false;
-            codenum = HAL::timeInMilliseconds();
-            while(!allReached)
-            {
-                allReached = true;
-                if( (HAL::timeInMilliseconds()-codenum) > 1000 )   //Print Temp Reading every 1 second while heating up.
-                {
-                    printTemperatures();
-                    codenum = HAL::timeInMilliseconds();
-                }
-                Commands::checkForPeriodicalActions(true);
-                for(uint8_t h = 0; h < NUM_TEMPERATURE_LOOPS; h++)
-                {
-                    TemperatureController *act = tempController[h];
-                    if(act->targetTemperatureC > 30 && fabs(act->targetTemperatureC-act->currentTemperatureC) > 1)
-                        allReached = false;
-                }
-            }
-        }
+        for(fast8_t h = 0; h < NUM_TEMPERATURE_LOOPS; h++)
+            tempController[h]->waitForTargetTemperature();
         break;
 
 #if FAN_PIN>-1 && FEATURE_FAN_CONTROL
     case 106: // M106 Fan On
-        setFanSpeed(com->hasS()?com->S:255,com->hasP());
+        if(!(Printer::flag2 & PRINTER_FLAG2_IGNORE_M106_COMMAND))
+        {
+        setFanSpeed(com->hasS() ? com->S : 255, com->hasP());
+        }
         break;
     case 107: // M107 Fan Off
-        setFanSpeed(0,com->hasP());
+        setFanSpeed(0, com->hasP());
         break;
 #endif
     case 111: // M111 enable/disable run time debug flags
@@ -1336,12 +1337,12 @@ void Commands::processMCode(GCode *com)
         }
         if(Printer::debugDryrun())   // simulate movements without printing
         {
-            Extruder::setTemperatureForExtruder(0,0);
+            Extruder::setTemperatureForExtruder(0, 0);
 #if NUM_EXTRUDER>1
-            for(uint8_t i=0; i<NUM_EXTRUDER; i++)
-                Extruder::setTemperatureForExtruder(0,i);
+            for(uint8_t i = 0; i < NUM_EXTRUDER; i++)
+                Extruder::setTemperatureForExtruder(0, i);
 #else
-            Extruder::setTemperatureForExtruder(0,0);
+            Extruder::setTemperatureForExtruder(0, 0);
 #endif
 #if HEATED_BED_TYPE!=0
             target_bed_raw = 0;
@@ -1392,13 +1393,13 @@ void Commands::processMCode(GCode *com)
 #if BEEPER_TYPE>0
     case 120: // M120 Test beeper function
         if(com->hasS() && com->hasP())
-            beep(com->S,com->P); // Beep test
+            beep(com->S, com->P); // Beep test
         break;
 #endif
 #if MIXING_EXTRUDER > 0
     case 163: // M163 S<extruderNum> P<weight>  - Set weight for this mixing extruder drive
         if(com->hasS() && com->hasP() && com->S < NUM_EXTRUDER && com->S >= 0)
-            Extruder::setMixingWeight(com->S,com->P);
+            Extruder::setMixingWeight(com->S, com->P);
         break;
     case 164: /// M164 S<virtNum> P<0 = dont store eeprom,1 = store to eeprom> - Store weights as virtual extruder S
         if(!com->hasS() || com->S < 0 || com->S >= VIRTUAL_EXTRUDER) break; // ignore illigal values
@@ -1579,7 +1580,9 @@ void Commands::processMCode(GCode *com)
         Com::printInfoFLN(PSTR("Triggering watchdog. If activated, the printer will reset."));
         Printer::kill(false);
         HAL::delayMilliseconds(200); // write output, make sure heaters are off for safety
-        InterruptProtectedBlock noInts;
+#if !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega2560__)
+        InterruptProtectedBlock noInts;			// don't disable interrupts on mega2560 and mega1280 because of bootloader bug
+#endif
         while(1) {} // Endless loop
     }
 #else
@@ -1607,10 +1610,12 @@ void Commands::processMCode(GCode *com)
 #if defined(TEMP_PID) && NUM_TEMPERATURE_LOOPS>0
         int temp = 150;
         int cont = 0;
+        int cycles = 5;
         if(com->hasS()) temp = com->S;
         if(com->hasP()) cont = com->P;
+        if(com->hasR()) cycles = static_cast<int>(com->R);
         if(cont>=NUM_TEMPERATURE_LOOPS) cont = NUM_TEMPERATURE_LOOPS;
-        tempController[cont]->autotunePID(temp,cont,com->hasX());
+        tempController[cont]->autotunePID(temp,cont,cycles,com->hasX());
 #endif
     }
     break;
@@ -1645,9 +1650,9 @@ void Commands::processMCode(GCode *com)
         if(com->hasS())
         {
             if(com->S > 0)
-                Printer::distortion.enable(!com->hasP() || com->P == 1);
+                Printer::distortion.enable(com->hasP() && com->P == 1);
             else
-                Printer::distortion.disable(!com->hasP() || com->P == 1);
+                Printer::distortion.disable(com->hasP() && com->P == 1);
         }
         else
         {
@@ -1662,7 +1667,10 @@ void Commands::processMCode(GCode *com)
             int s = 0;
             if(com->hasS())
                 s = com->S;
-            HAL::servoMicroseconds(com->P,s);
+            uint16_t r = 0;
+            if(com->hasR())    // auto off time in ms
+                r = com->R;
+            HAL::servoMicroseconds(com->P,s,r);
         }
         break;
 #endif // FEATURE_SERVO
@@ -1681,9 +1689,11 @@ void Commands::processMCode(GCode *com)
     }
     break;
     case 355: // M355 S<0/1> - Turn case light on/off, no S = report status
-        if(com->hasS()) {
+        if(com->hasS())
+        {
             Printer::setCaseLight(com->S);
-        } else
+        }
+        else
             Printer::reportCaseLightStatus();
         break;
     case 360: // M360 - show configuration
@@ -1722,7 +1732,16 @@ void Commands::processMCode(GCode *com)
     case 502: // M502
         EEPROM::restoreEEPROMSettingsFromConfiguration();
         break;
-
+#if EXTRUDER_JAM_CONTROL
+#ifdef DEBUG_JAM
+    case 512:
+        Com::printFLN(PSTR("Jam signal:"),(int16_t)READ(EXT0_JAM_PIN));
+        break;
+#endif // DEBUG_JAM
+    case 513:
+        Extruder::markAllUnjammed();
+        break;
+#endif // EXTRUDER_JAM_CONTROL
 #ifdef DEBUG_QUEUE_MOVE
     case 533: // M533 Write move data
         Com::printF(PSTR("Buf:"),(int)PrintLine::linesCount);
@@ -1731,33 +1750,33 @@ void Commands::processMCode(GCode *com)
         if(PrintLine::cur == NULL)
         {
             Com::printFLN(PSTR("No move"));
-            if(PrintLine::linesCount>0)
+            if(PrintLine::linesCount > 0)
             {
                 PrintLine &cur = PrintLine::lines[PrintLine::linesPos];
-                Com::printF(PSTR("JFlags:"),(int)cur.joinFlags);
-                Com::printFLN(PSTR("Flags:"),(int)cur.flags);
+                Com::printF(PSTR("JFlags:"), (int)cur.joinFlags);
+                Com::printFLN(PSTR("Flags:"), (int)cur.flags);
                 if(cur.isWarmUp())
                 {
-                    Com::printFLN(PSTR("warmup:"),(int)cur.getWaitForXLinesFilled());
+                    Com::printFLN(PSTR("warmup:"), (int)cur.getWaitForXLinesFilled());
                 }
             }
         }
         else
         {
-            Com::printF(PSTR("Rem:"),PrintLine::cur->stepsRemaining);
-            Com::printFLN(PSTR("Int:"),Printer::interval);
+            Com::printF(PSTR("Rem:"), PrintLine::cur->stepsRemaining);
+            Com::printFLN(PSTR("Int:"), Printer::interval);
         }
         break;
 #endif // DEBUG_QUEUE_MOVE
 #ifdef DEBUG_SEGMENT_LENGTH
     case 534: // M534
-        Com::printFLN(PSTR("Max. segment size:"),Printer::maxRealSegmentLength);
+        Com::printFLN(PSTR("Max. segment size:"), Printer::maxRealSegmentLength);
         if(com->hasS())
             Printer::maxRealSegmentLength = 0;
         break;
 #endif
 #ifdef DEBUG_REAL_JERK
-        Com::printFLN(PSTR("Max. jerk measured:"),Printer::maxRealJerk);
+        Com::printFLN(PSTR("Max. jerk measured:"), Printer::maxRealJerk);
         if(com->hasS())
             Printer::maxRealJerk = 0;
         break;
@@ -1787,6 +1806,20 @@ void Commands::processMCode(GCode *com)
         uid.executeAction(UI_ACTION_WIZARD_FILAMENTCHANGE, true);
         break;
 #endif
+    case 601:
+        if(com->hasS() && com->S > 0)
+            Extruder::pauseExtruders();
+        else
+            Extruder::unpauseExtruders();
+        break;
+    case 602:
+        Commands::waitUntilEndOfAllMoves();
+        if(com->hasS()) Printer::setDebugJam(com->S > 0);
+        if(com->hasP()) Printer::setJamcontrolDisabled(com->P > 0);
+        break;
+    case 603:
+        Printer::setInterruptEvent(PRINTER_INTERRUPT_EVENT_JAM_DETECTED, true);
+        break;
     case 908: // M908 Control digital trimpot directly.
     {
 #if STEPPER_CURRENT_CONTROL != CURRENT_CONTROL_MANUAL
@@ -1848,29 +1881,29 @@ void Commands::emergencyStop()
     Extruder::manageTemperatures();
     for(uint8_t i = 0; i < NUM_EXTRUDER + 3; i++)
         pwm_pos[i] = 0;
-#if EXT0_HEATER_PIN>-1
+#if EXT0_HEATER_PIN > -1
     WRITE(EXT0_HEATER_PIN,HEATER_PINS_INVERTED);
 #endif
-#if defined(EXT1_HEATER_PIN) && EXT1_HEATER_PIN>-1 && NUM_EXTRUDER>1
-    WRITE(EXT1_HEATER_PIN,HEATER_PINS_INVERTED);
+#if defined(EXT1_HEATER_PIN) && EXT1_HEATER_PIN > -1 && NUM_EXTRUDER > 1
+    WRITE(EXT1_HEATER_PIN, HEATER_PINS_INVERTED);
 #endif
-#if defined(EXT2_HEATER_PIN) && EXT2_HEATER_PIN>-1 && NUM_EXTRUDER>2
-    WRITE(EXT2_HEATER_PIN,HEATER_PINS_INVERTED);
+#if defined(EXT2_HEATER_PIN) && EXT2_HEATER_PIN > -1 && NUM_EXTRUDER > 2
+    WRITE(EXT2_HEATER_PIN, HEATER_PINS_INVERTED);
 #endif
-#if defined(EXT3_HEATER_PIN) && EXT3_HEATER_PIN>-1 && NUM_EXTRUDER>3
-    WRITE(EXT3_HEATER_PIN,HEATER_PINS_INVERTED);
+#if defined(EXT3_HEATER_PIN) && EXT3_HEATER_PIN > -1 && NUM_EXTRUDER > 3
+    WRITE(EXT3_HEATER_PIN, HEATER_PINS_INVERTED);
 #endif
-#if defined(EXT4_HEATER_PIN) && EXT4_HEATER_PIN>-1 && NUM_EXTRUDER>4
-    WRITE(EXT4_HEATER_PIN,HEATER_PINS_INVERTED);
+#if defined(EXT4_HEATER_PIN) && EXT4_HEATER_PIN > -1 && NUM_EXTRUDER > 4
+    WRITE(EXT4_HEATER_PIN, HEATER_PINS_INVERTED);
 #endif
-#if defined(EXT5_HEATER_PIN) && EXT5_HEATER_PIN>-1 && NUM_EXTRUDER>5
-    WRITE(EXT5_HEATER_PIN,HEATER_PINS_INVERTED);
+#if defined(EXT5_HEATER_PIN) && EXT5_HEATER_PIN > -1 && NUM_EXTRUDER > 5
+    WRITE(EXT5_HEATER_PIN, HEATER_PINS_INVERTED);
 #endif
-#if FAN_PIN>-1 && FEATURE_FAN_CONTROL
-    WRITE(FAN_PIN,0);
+#if FAN_PIN > -1 && FEATURE_FAN_CONTROL
+    WRITE(FAN_PIN, 0);
 #endif
-#if HEATED_BED_HEATER_PIN>-1
-    WRITE(HEATED_BED_HEATER_PIN,HEATER_PINS_INVERTED);
+#if HEATED_BED_HEATER_PIN > -1
+    WRITE(HEATED_BED_HEATER_PIN, HEATER_PINS_INVERTED);
 #endif
     HAL::delayMilliseconds(200);
     InterruptProtectedBlock noInts;
@@ -1887,7 +1920,7 @@ void Commands::checkFreeMemory()
 
 void Commands::writeLowestFreeRAM()
 {
-    if(lowestRAMValueSend>lowestRAMValue)
+    if(lowestRAMValueSend > lowestRAMValue)
     {
         lowestRAMValueSend = lowestRAMValue;
         Com::printFLN(Com::tFreeRAM, lowestRAMValue);

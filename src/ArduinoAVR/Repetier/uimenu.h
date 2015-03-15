@@ -86,10 +86,11 @@ feed rate
 %fY : Homing feedrate y direction
 %fZ : Homing feedrate z direction
 %Fs : Fan speed
+%Fi : ignore M106 commands state
 
 inactivity
-%is : Stepper inactive time in seconds
-%ip : Max. inactive time in seconds
+%is : Stepper inactive time in minutes
+%ip : Max. inactive time in minutes
 
 random stuff
 %os : Status message
@@ -102,6 +103,9 @@ random stuff
 %oC : Output level current extruder
 %ob : Output level heated bed
 %PN : Printer name
+%on : current extruder number (1,2,3...)
+%oS : servo position
+%oY : babysteps counter
 
 stops
 %sx : State of x min endstop.
@@ -126,6 +130,7 @@ extruder position
 %x1 : Y position
 %x2 : Z position
 %x3 : Current extruder position
+%x4 : Printed since temperature on in meters (for filament usage)
 
 extruder parameters
 %X0..9 : Extruder selected marker
@@ -193,15 +198,17 @@ for 2 row displays. You can add additional pages or change the default pages lik
    UI_PAGE6(ui_page1,"\xa %e0/%E0\xb0 X:%x0",
    #if NUM_EXTRUDER > 1 && MIXING_EXTRUDER == 0
      "\xa %e1/%E1\xb0 Y:%x1",
+   #elif HAVE_HEATED_BED
+     "\xe %eb/%Eb\xb0 Y:%x1",
   #else
      "             Y:%x1",
    #endif
-   #if HAVE_HEATED_BED
+   #if HAVE_HEATED_BED && NUM_EXTRUDER > 1 && MIXING_EXTRUDER == 0
      "\xe %eb/%Eb\xb0 Z:%x2",
    #else
-     "Fan %Fs%%%     Z:%x2",
+     "Flow:\xfd %of%%%   Z:%x2",
    #endif
-   "Mul:%om", "Buf:%oB", "%os")
+   "Mul: %om%%% \xfd   E: %x4m", "Buf: %oB", "%os")
 
   #if EEPROM_MODE != 0
     UI_PAGE4(ui_page2,UI_TEXT_PRINT_TIME,"%Ut",UI_TEXT_PRINT_FILAMENT,"%Uf m")
@@ -222,13 +229,15 @@ for 2 row displays. You can add additional pages or change the default pages lik
 #elif UI_ROWS >= 4
  #if HAVE_HEATED_BED
  #if NUM_EXTRUDER > 0
-   UI_PAGE4(ui_page1,cTEMP "%ec/%Ec" cDEG "B%eB/%Eb" cDEG,"Z:%x2     Buf:%oB","Mul: %om   Flow: %of","%os")
+//   UI_PAGE4(ui_page1,cTEMP "%ec/%Ec" cDEG "B%eB/%Eb" cDEG,"Z:%x2  Buf : %oB","Mul: %om   Flow: %of","%os")
+   UI_PAGE4(ui_page1,cTEMP "%ec/%Ec" cDEG "B%eB/%Eb" cDEG,"Z:%x2  Buf : %oB","Mul: %om   E:%x4","%os")
 #else
-   UI_PAGE4(ui_page1,"B%eB/%Eb" cDEG,"Z:%x2     Buf:%oB","Mul: %om   Flow: %of","%os")
+//   UI_PAGE4(ui_page1,"B%eB/%Eb" cDEG,"Z:%x2  Buf : %oB","Mul: %om   Flow: %of","%os")
+   UI_PAGE4(ui_page1,"B%eB/%Eb" cDEG,"Z:%x2  Buf : %oB","Mul: %om   E:%x4","%os")
 #endif
    //UI_PAGE4(ui_page1,UI_TEXT_PAGE_EXTRUDER,UI_TEXT_PAGE_BED,UI_TEXT_PAGE_BUFFER,"%os");
  #else
- #if NUM_EXTRUDER>0
+ #if NUM_EXTRUDER > 0
    UI_PAGE4(ui_page1,UI_TEXT_PAGE_EXTRUDER,"Z:%x2 mm",UI_TEXT_PAGE_BUFFER,"%os")
    #else
    UI_PAGE4(ui_page1,"","Z:%x2 mm",UI_TEXT_PAGE_BUFFER,"%os")
@@ -256,11 +265,11 @@ for 2 row displays. You can add additional pages or change the default pages lik
    ,"","%os"
  #elif (NUM_EXTRUDER == 1 || MIXING_EXTRUDER == 1) || (NUM_EXTRUDER == 0 &&  HAVE_HEATED_BED)
    ,"","","%os"
- #elif NUM_EXTRUDER==0
+ #elif NUM_EXTRUDER == 0
    ,"","","","%os"
  #endif
  )
- #if EEPROM_MODE!=0
+ #if EEPROM_MODE != 0
   UI_PAGE4(ui_page4,UI_TEXT_PRINT_TIME,"%Ut",UI_TEXT_PRINT_FILAMENT,"%Uf m")
   #define UI_PRINTTIME_PAGES ,&ui_page4
   #define UI_PRINTTIME_COUNT 1
@@ -272,7 +281,7 @@ for 2 row displays. You can add additional pages or change the default pages lik
 Merge pages together. Use the following pattern:
 #define UI_PAGES {&name1,&name2,&name3}
 */
- #define UI_PAGES {&ui_page1,&ui_page2,&ui_page3 UI_PRINTTIME_PAGES}
+ #define UI_PAGES {&ui_page1, &ui_page2, &ui_page3 UI_PRINTTIME_PAGES}
 // How many pages do you want to have. Minimum is 1.
  #define UI_NUM_PAGES 3+UI_PRINTTIME_COUNT
 #else
@@ -314,8 +323,12 @@ UI_MENU_ACTION2(ui_menu_error,UI_ACTION_DUMMY,UI_TEXT_ERROR,"%oe")
 #if FEATURE_RETRACTION
 #if UI_ROWS >= 4
 UI_WIZARD4(ui_wiz_filamentchange, UI_ACTION_WIZARD_FILAMENTCHANGE, UI_TEXT_WIZ_CH_FILAMENT1, UI_TEXT_WIZ_CH_FILAMENT2, UI_TEXT_WIZ_CH_FILAMENT3, UI_TEXT_CLICK_DONE)
+UI_WIZARD4(ui_wiz_jamwaitheat, UI_ACTION_WIZARD_JAM_WAITHEAT, UI_TEXT_WIZ_WAITTEMP1, UI_TEXT_WIZ_WAITTEMP2,"",cTEMP "%ec/%Ec" cDEG)
+UI_WIZARD4(ui_wiz_jamreheat, UI_ACTION_WIZARD_JAM_REHEAT, UI_TEXT_WIZ_REHEAT1, UI_TEXT_WIZ_REHEAT2,"",cTEMP "%ec" cDEG)
 #else
 UI_WIZARD2(ui_wiz_filamentchange, UI_ACTION_WIZARD_FILAMENTCHANGE, UI_TEXT_WIZ_CH_FILAMENT1, UI_TEXT_CLICK_DONE)
+UI_WIZARD2(ui_wiz_jamwaitheat, UI_ACTION_WIZARD_JAM_WAITHEAT, UI_TEXT_WIZ_WAITTEMP1, UI_TEXT_WIZ_WAITTEMP2)
+UI_WIZARD2(ui_wiz_jamreheat, UI_ACTION_WIZARD_JAM_REHEAT, UI_TEXT_WIZ_REHEAT1, UI_TEXT_WIZ_REHEAT2)
 #endif
 #endif
 
@@ -383,13 +396,21 @@ UI_MENU_ACTIONSELECTOR(ui_menu_go_zfast_notest,UI_TEXT_Z_POS_FAST,ui_menu_zpos_f
 #define UI_SPEED_Z ,&ui_menu_go_zpos
 #define UI_SPEED_Z_NOTEST ,&ui_menu_go_zpos_notest
 #endif
+#if FEATURE_SERVO > 0 && UI_SERVO_CONTROL > 0
+  UI_MENU_CHANGEACTION(ui_menu_servopos, UI_TEXT_SERVOPOS, UI_ACTION_SERVOPOS)
+  #define SERVOPOS_COUNT 1
+  #define SERVOPOS_ENTRY ,&ui_menu_servopos
+#else
+  #define SERVOPOS_COUNT 0
+  #define SERVOPOS_ENTRY
+#endif
 
 #if DRIVE_SYSTEM != DELTA     //Positioning menu for non-delta
-#define UI_MENU_POSITIONS {UI_MENU_ADDCONDBACK &ui_menu_home_all,&ui_menu_home_x,&ui_menu_home_y,&ui_menu_home_z UI_SPEED_X UI_SPEED_Y UI_SPEED_Z ,&ui_menu_go_epos}
-UI_MENU(ui_menu_positions,UI_MENU_POSITIONS,5 + 3 * UI_SPEED + UI_MENU_BACKCNT)
+#define UI_MENU_POSITIONS {UI_MENU_ADDCONDBACK &ui_menu_home_all,&ui_menu_home_x,&ui_menu_home_y,&ui_menu_home_z UI_SPEED_X UI_SPEED_Y UI_SPEED_Z ,&ui_menu_go_epos SERVOPOS_ENTRY}
+UI_MENU(ui_menu_positions,UI_MENU_POSITIONS,5 + 3 * UI_SPEED + UI_MENU_BACKCNT + SERVOPOS_COUNT)
 #else                   //Positioning menu for delta (removes individual x,y,z homing)
-#define UI_MENU_POSITIONS {UI_MENU_ADDCONDBACK &ui_menu_home_all  UI_SPEED_X UI_SPEED_Y UI_SPEED_Z ,&ui_menu_go_epos}
-UI_MENU(ui_menu_positions,UI_MENU_POSITIONS,2 + 3 * UI_SPEED + UI_MENU_BACKCNT)
+#define UI_MENU_POSITIONS {UI_MENU_ADDCONDBACK &ui_menu_home_all  UI_SPEED_X UI_SPEED_Y UI_SPEED_Z ,&ui_menu_go_epos SERVOPOS_ENTRY}
+UI_MENU(ui_menu_positions,UI_MENU_POSITIONS,2 + 3 * UI_SPEED + UI_MENU_BACKCNT + SERVOPOS_COUNT)
 #endif
 
 // **** Delta calibration menu
@@ -512,8 +533,9 @@ UI_MENU_ACTIONCOMMAND(ui_menu_fan_25,UI_TEXT_FAN_25,UI_ACTION_FAN_25)
 UI_MENU_ACTIONCOMMAND(ui_menu_fan_50,UI_TEXT_FAN_50,UI_ACTION_FAN_50)
 UI_MENU_ACTIONCOMMAND(ui_menu_fan_75,UI_TEXT_FAN_75,UI_ACTION_FAN_75)
 UI_MENU_ACTIONCOMMAND(ui_menu_fan_full,UI_TEXT_FAN_FULL,UI_ACTION_FAN_FULL)
-#define UI_MENU_FAN {UI_MENU_ADDCONDBACK &ui_menu_fan_fanspeed,&ui_menu_fan_off,&ui_menu_fan_25,&ui_menu_fan_50,&ui_menu_fan_75,&ui_menu_fan_full}
-UI_MENU(ui_menu_fan,UI_MENU_FAN,6+UI_MENU_BACKCNT)
+UI_MENU_ACTIONCOMMAND(ui_menu_fan_ignoreM106,UI_TEXT_IGNORE_M106,UI_ACTION_IGNORE_M106)
+#define UI_MENU_FAN {UI_MENU_ADDCONDBACK &ui_menu_fan_fanspeed,&ui_menu_fan_off,&ui_menu_fan_25,&ui_menu_fan_50,&ui_menu_fan_75,&ui_menu_fan_full,&ui_menu_fan_ignoreM106}
+UI_MENU(ui_menu_fan,UI_MENU_FAN,7+UI_MENU_BACKCNT)
 UI_MENU_SUBMENU(ui_menu_fan_sub,UI_TEXT_FANSPEED,ui_menu_fan)
 #define UI_MENU_FAN_COND &ui_menu_fan_sub,
 #define UI_MENU_FAN_CNT 1
@@ -618,8 +640,16 @@ UI_MENU_ACTION2C(ui_menu_maxinactive2,UI_ACTION_MAX_INACTIVE,UI_TEXT_POWER_INACT
 UI_MENU_CHANGEACTION(ui_menu_general_baud,UI_TEXT_BAUDRATE,UI_ACTION_BAUDRATE)
 UI_MENU_ACTIONSELECTOR(ui_menu_general_stepper_inactive,UI_TEXT_STEPPER_INACTIVE,ui_menu_stepper2)
 UI_MENU_ACTIONSELECTOR(ui_menu_general_max_inactive,UI_TEXT_POWER_INACTIVE,ui_menu_maxinactive2)
-#define UI_MENU_GENERAL {UI_MENU_ADDCONDBACK &ui_menu_general_baud,&ui_menu_general_stepper_inactive,&ui_menu_general_max_inactive}
-UI_MENU(ui_menu_general,UI_MENU_GENERAL,3+UI_MENU_BACKCNT)
+#if FEATURE_AUTOLEVEL
+ UI_MENU_ACTIONCOMMAND(ui_menu_toggle_autolevel,UI_TEXT_AUTOLEVEL_ONOFF,UI_ACTION_AUTOLEVEL_ONOFF)
+ #define UI_TOOGLE_AUTOLEVEL_ENTRY ,&ui_menu_toggle_autolevel
+ #define UI_TOGGLE_AUTOLEVEL_COUNT 1
+#else
+ #define UI_TOOGLE_AUTOLEVEL_ENTRY
+ #define UI_TOGGLE_AUTOLEVEL_COUNT 0
+#endif
+#define UI_MENU_GENERAL {UI_MENU_ADDCONDBACK &ui_menu_general_baud,&ui_menu_general_stepper_inactive,&ui_menu_general_max_inactive UI_TOOGLE_AUTOLEVEL_ENTRY}
+UI_MENU(ui_menu_general,UI_MENU_GENERAL,3+UI_MENU_BACKCNT+UI_TOGGLE_AUTOLEVEL_COUNT)
 
 // **** Extruder configuration
 
@@ -642,19 +672,21 @@ UI_MENU_CHANGEACTION(ui_menu_cext_advancek,UI_TEXT_EXTR_ADVANCE_K,UI_ACTION_ADVA
 #endif
 UI_MENU_CHANGEACTION(ui_menu_cext_advancel,UI_TEXT_EXTR_ADVANCE_L,UI_ACTION_ADVANCE_L)
 #endif
+UI_MENU_CHANGEACTION(       ui_menu_cext_manager, UI_TEXT_EXTR_MANAGER, UI_ACTION_EXTR_HEATMANAGER)
+UI_MENU_CHANGEACTION(       ui_menu_cext_pmax,    UI_TEXT_EXTR_PMAX,    UI_ACTION_PID_MAX)
 #if TEMP_PID
-UI_MENU_CHANGEACTION(ui_menu_cext_manager, UI_TEXT_EXTR_MANAGER, UI_ACTION_EXTR_HEATMANAGER)
-UI_MENU_CHANGEACTION(ui_menu_cext_pgain,   UI_TEXT_EXTR_PGAIN,   UI_ACTION_PID_PGAIN)
-UI_MENU_CHANGEACTION(ui_menu_cext_igain,   UI_TEXT_EXTR_IGAIN,   UI_ACTION_PID_IGAIN)
-UI_MENU_CHANGEACTION(ui_menu_cext_dgain,   UI_TEXT_EXTR_DGAIN,   UI_ACTION_PID_DGAIN)
-UI_MENU_CHANGEACTION(ui_menu_cext_dmin,    UI_TEXT_EXTR_DMIN,    UI_ACTION_DRIVE_MIN)
-UI_MENU_CHANGEACTION(ui_menu_cext_dmax,    UI_TEXT_EXTR_DMAX,    UI_ACTION_DRIVE_MAX)
-UI_MENU_CHANGEACTION(ui_menu_cext_pmax,    UI_TEXT_EXTR_PMAX,    UI_ACTION_PID_MAX)
-#define UI_MENU_PIDCOND ,&ui_menu_cext_manager,&ui_menu_cext_pgain,&ui_menu_cext_igain,&ui_menu_cext_dgain,&ui_menu_cext_dmin,&ui_menu_cext_dmax,&ui_menu_cext_pmax
-#define UI_MENU_PIDCNT 7
+UI_MENU_CHANGEACTION_FILTER(ui_menu_cext_pgain,   UI_TEXT_EXTR_PGAIN,   UI_ACTION_PID_PGAIN, MENU_MODE_FULL_PID, 0)
+UI_MENU_CHANGEACTION_FILTER(ui_menu_cext_igain,   UI_TEXT_EXTR_IGAIN,   UI_ACTION_PID_IGAIN,  MENU_MODE_FULL_PID, 0)
+UI_MENU_CHANGEACTION_FILTER(ui_menu_cext_dgain,   UI_TEXT_EXTR_DGAIN,   UI_ACTION_PID_DGAIN,  MENU_MODE_FULL_PID, 0)
+UI_MENU_CHANGEACTION_FILTER(ui_menu_cext_dmin,    UI_TEXT_EXTR_DMIN,    UI_ACTION_DRIVE_MIN,  MENU_MODE_FULL_PID, 0)
+UI_MENU_CHANGEACTION_FILTER(ui_menu_cext_dmax,    UI_TEXT_EXTR_DMAX,    UI_ACTION_DRIVE_MAX,  MENU_MODE_FULL_PID, 0)
+UI_MENU_CHANGEACTION_FILTER(ui_menu_cext_pgain_dt,   UI_TEXT_EXTR_DEADTIME,   UI_ACTION_PID_PGAIN, MENU_MODE_DEADTIME, 0)
+UI_MENU_CHANGEACTION_FILTER(ui_menu_cext_dmax_dt,    UI_TEXT_EXTR_DMAX_DT,    UI_ACTION_DRIVE_MAX,  MENU_MODE_DEADTIME, 0)
+#define UI_MENU_PIDCOND ,&ui_menu_cext_manager,&ui_menu_cext_pgain,&ui_menu_cext_igain,&ui_menu_cext_dgain,&ui_menu_cext_dmin,&ui_menu_cext_dmax, &ui_menu_cext_pgain_dt,&ui_menu_cext_dmax_dt,&ui_menu_cext_pmax
+#define UI_MENU_PIDCNT 9
 #else
-#define UI_MENU_PIDCOND
-#define UI_MENU_PIDCNT 0
+#define UI_MENU_PIDCOND ,&ui_menu_cext_manager, &ui_menu_cext_pmax
+#define UI_MENU_PIDCNT 2
 #endif
 #if NUM_EXTRUDER>2 && MIXING_EXTRUDER == 0
 UI_MENU_CHANGEACTION(ui_menu_cext_xoffset,UI_TEXT_EXTR_XOFF,UI_ACTION_X_OFFSET)
@@ -673,11 +705,30 @@ UI_MENU_CHANGEACTION(ui_menu_cext_yoffset,UI_TEXT_EXTR_YOFF,UI_ACTION_Y_OFFSET)
 #define UI_MENU_CEXTR {UI_MENU_ADDCONDBACK UI_MENU_CONFEXTCOND &ui_menu_cext_steps,&ui_menu_cext_start_feedrate,&ui_menu_cext_max_feedrate,&ui_menu_cext_acceleration,&ui_menu_cext_watch_period,&ui_menu_ext_wait_units,&ui_menu_ext_wait_temp UI_MENU_ADVANCE UI_MENU_PIDCOND}
 UI_MENU(ui_menu_cextr,UI_MENU_CEXTR,7+UI_MENU_BACKCNT+UI_MENU_PIDCNT+UI_MENU_CONFEXTCNT+UI_MENU_ADV_CNT)
 
+// HeatBed Configuration - use menu actions from extruder configuration
+#if HAVE_HEATED_BED
+ #if TEMP_PID
+  #define UI_MENU_BEDCONF {UI_MENU_ADDCONDBACK &ui_menu_cext_manager,&ui_menu_cext_pgain,&ui_menu_cext_igain,&ui_menu_cext_dgain,&ui_menu_cext_dmin,&ui_menu_cext_dmax,&ui_menu_cext_pmax}
+  UI_MENU(ui_menu_bedconf, UI_MENU_BEDCONF, 8)
+ #else
+  #define UI_MENU_BEDCONF {UI_MENU_ADDCONDBACK &ui_menu_cext_manager, &ui_menu_cext_pmax}
+  UI_MENU(ui_menu_bedconf, UI_MENU_BEDCONF, 3)
+ #endif
+#endif
+
 // **** Configuration menu
 UI_MENU_SUBMENU(ui_menu_conf_general, UI_TEXT_GENERAL,      ui_menu_general)
 UI_MENU_SUBMENU(ui_menu_conf_accel,   UI_TEXT_ACCELERATION, ui_menu_accel)
 UI_MENU_SUBMENU(ui_menu_conf_feed,    UI_TEXT_FEEDRATE,     ui_menu_feedrate)
 UI_MENU_SUBMENU(ui_menu_conf_extr,    UI_TEXT_EXTRUDER,     ui_menu_cextr)
+#if HAVE_HEATED_BED
+ UI_MENU_SUBMENU(ui_menu_conf_bed,    UI_TEXT_HEATING_BED,  ui_menu_bedconf)
+ #define UI_MENU_BEDCONF_COND ,&ui_menu_conf_bed
+ #define UI_MENU_BEDCONF_CNT 1
+#else
+ #define UI_MENU_BEDCONF_COND
+ #define UI_MENU_BEDCONF_CNT 0
+#endif
 #if EEPROM_MODE!=0
 UI_MENU_ACTIONCOMMAND(ui_menu_conf_to_eeprom,UI_TEXT_STORE_TO_EEPROM,UI_ACTION_STORE_EEPROM)
 UI_MENU_ACTIONCOMMAND(ui_menu_conf_from_eeprom,UI_TEXT_LOAD_EEPROM,UI_ACTION_LOAD_EEPROM)
@@ -705,8 +756,8 @@ UI_MENU_SUBMENU(ui_menu_conf_delta, UI_TEXT_ZCALIB, ui_menu_delta)
 #define UI_MENU_DELTA_COND
 #define UI_MENU_DELTA_CNT 0
 #endif
-#define UI_MENU_CONFIGURATION {UI_MENU_ADDCONDBACK &ui_menu_conf_general,&ui_menu_conf_accel,&ui_menu_conf_feed,&ui_menu_conf_extr UI_MENU_EEPROM_COND UI_MENU_DELTA_COND UI_MENU_SL_COND}
-UI_MENU(ui_menu_configuration,UI_MENU_CONFIGURATION,UI_MENU_BACKCNT+UI_MENU_EEPROM_CNT+UI_MENU_DELTA_CNT+UI_MENU_SL_CNT+4)
+#define UI_MENU_CONFIGURATION {UI_MENU_ADDCONDBACK &ui_menu_conf_general,&ui_menu_conf_accel,&ui_menu_conf_feed,&ui_menu_conf_extr UI_MENU_BEDCONF_COND UI_MENU_EEPROM_COND UI_MENU_DELTA_COND UI_MENU_SL_COND}
+UI_MENU(ui_menu_configuration,UI_MENU_CONFIGURATION,UI_MENU_BACKCNT+UI_MENU_EEPROM_CNT+UI_MENU_BEDCONF_CNT+UI_MENU_DELTA_CNT+UI_MENU_SL_CNT+4)
 // Main menu
 UI_MENU_SUBMENU(ui_menu_main1, UI_TEXT_QUICK_SETTINGS,ui_menu_quick)
 UI_MENU_SUBMENU(ui_menu_main2, UI_TEXT_POSITION,ui_menu_positions)

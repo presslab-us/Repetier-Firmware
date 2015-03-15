@@ -1,6 +1,12 @@
 #include "Repetier.h"
 #include <compat/twi.h>
 
+#if ANALOG_INPUTS > 0
+uint8 osAnalogInputCounter[ANALOG_INPUTS];
+uint osAnalogInputBuildup[ANALOG_INPUTS];
+uint8 osAnalogInputPos = 0; // Current sampling position
+#endif
+
 //extern "C" void __cxa_pure_virtual() { }
 
 HAL::HAL()
@@ -495,12 +501,14 @@ unsigned char HAL::i2cReadNak(void)
 #define SERVO2500US F_CPU/3200
 #define SERVO5000US F_CPU/1600
 unsigned int HAL::servoTimings[4] = {0,0,0,0};
+unsigned int servoAutoOff[4] = {0,0,0,0};
 static uint8_t servoIndex = 0;
-void HAL::servoMicroseconds(uint8_t servo,int ms)
+void HAL::servoMicroseconds(uint8_t servo,int ms, uint16_t autoOff)
 {
     if(ms<500) ms = 0;
     if(ms>2500) ms = 2500;
     servoTimings[servo] = (unsigned int)(((F_CPU/1000000)*(long)ms)>>3);
+    servoAutoOff[servo] = (ms) ? (autoOff / 20) : 0;
 }
 SIGNAL (TIMER3_COMPA_vect)
 {
@@ -574,6 +582,15 @@ SIGNAL (TIMER3_COMPA_vect)
 #endif
         OCR3A = SERVO5000US;
         break;
+    }
+    if(servoIndex & 1)
+    {
+        uint8_t nr = servoIndex >> 1;
+	if(servoAutoOff[nr])
+	{
+		servoAutoOff[nr]--;
+		if(servoAutoOff[nr] == 0) HAL::servoTimings[nr] = 0;
+	}
     }
     servoIndex++;
     if(servoIndex>7)
@@ -766,10 +783,10 @@ ISR(PWM_TIMER_VECTOR)
         if((pwm_pos_set[4] = (pwm_pos[4] & HEATER_PWM_MASK)) > 0) WRITE(EXT4_HEATER_PIN,!HEATER_PINS_INVERTED);
 #endif
 #if defined(EXT5_HEATER_PIN) && EXT5_HEATER_PIN > -1 && NUM_EXTRUDER > 5
-        if((pwm_pos_set[5] = (pwm_pos[5] & HEATER_PWM_MASK)) > 0) WRITE(EXT5_HEATER_PIN,!HEATER_PINS_INVERTED);
+        if((pwm_pos_set[5] = (pwm_pos[5] & HEATER_PWM_MASK)) > 0) WRITE(EXT5_HEATER_PIN, !HEATER_PINS_INVERTED);
 #endif
 #if HEATED_BED_HEATER_PIN > -1 && HAVE_HEATED_BED
-        if((pwm_pos_set[NUM_EXTRUDER] = pwm_pos[NUM_EXTRUDER]) > 0) WRITE(HEATED_BED_HEATER_PIN,!HEATER_PINS_INVERTED);
+        if((pwm_pos_set[NUM_EXTRUDER] = pwm_pos[NUM_EXTRUDER]) > 0) WRITE(HEATED_BED_HEATER_PIN, !HEATER_PINS_INVERTED);
 #endif
     }
     if(pwm_count == 0 && !PDM_FOR_COOLER)
@@ -802,7 +819,7 @@ ISR(PWM_TIMER_VECTOR)
         if((pwm_cooler_pos_set[5] = extruder[5].coolerPWM) > 0) WRITE(EXT5_EXTRUDER_COOLER_PIN, 1);
 #endif
 #endif
-#if FAN_BOARD_PIN > -1
+#if FAN_BOARD_PIN > -1 && SHARED_COOLER_BOARD_EXT == 0
         if((pwm_pos_set[NUM_EXTRUDER + 1] = pwm_pos[NUM_EXTRUDER + 1]) > 0) WRITE(FAN_BOARD_PIN,1);
 #endif
 #if FAN_PIN > -1 && FEATURE_FAN_CONTROL
@@ -893,7 +910,7 @@ ISR(PWM_TIMER_VECTOR)
 #endif
 #endif
 #endif
-#if FAN_BOARD_PIN > -1
+#if FAN_BOARD_PIN > -1  && SHARED_COOLER_BOARD_EXT == 0
 #if PDM_FOR_COOLER
     pulseDensityModulate(FAN_BOARD_PIN, pwm_pos[NUM_EXTRUDER + 1], pwm_pos_set[NUM_EXTRUDER + 1], false);
 #else
@@ -901,11 +918,14 @@ ISR(PWM_TIMER_VECTOR)
 #endif
 #endif
 #if FAN_PIN > -1 && FEATURE_FAN_CONTROL
+if(fanKickstart == 0)
+{
 #if PDM_FOR_COOLER
     pulseDensityModulate(FAN_PIN, pwm_pos[NUM_EXTRUDER + 2], pwm_pos_set[NUM_EXTRUDER + 2], false);
 #else
     if(pwm_pos_set[NUM_EXTRUDER + 2] == pwm_count && pwm_pos_set[NUM_EXTRUDER + 2] != 255) WRITE(FAN_PIN,0);
 #endif
+}
 #endif
 #if HEATED_BED_HEATER_PIN > -1 && HAVE_HEATED_BED
 #if PDM_FOR_EXTRUDER
@@ -920,32 +940,30 @@ ISR(PWM_TIMER_VECTOR)
     {
         counterPeriodical = 0;
         executePeriodical = 1;
+        if(fanKickstart) fanKickstart--;
     }
 // read analog values
 #if ANALOG_INPUTS > 0
     if((ADCSRA & _BV(ADSC)) == 0)   // Conversion finished?
     {
         osAnalogInputBuildup[osAnalogInputPos] += ADCW;
-        if(++osAnalogInputCounter[osAnalogInputPos]>=_BV(ANALOG_INPUT_SAMPLE))
+        if(++osAnalogInputCounter[osAnalogInputPos] >= _BV(ANALOG_INPUT_SAMPLE))
         {
 #if ANALOG_INPUT_BITS + ANALOG_INPUT_SAMPLE < 12
             osAnalogInputValues[osAnalogInputPos] =
-                osAnalogInputBuildup[osAnalogInputPos] <<
-                (12-ANALOG_INPUT_BITS-ANALOG_INPUT_SAMPLE);
+                osAnalogInputBuildup[osAnalogInputPos] << (12 - ANALOG_INPUT_BITS - ANALOG_INPUT_SAMPLE);
 #endif
 #if ANALOG_INPUT_BITS + ANALOG_INPUT_SAMPLE > 12
             osAnalogInputValues[osAnalogInputPos] =
-                osAnalogInputBuildup[osAnalogInputPos] >>
-                (ANALOG_INPUT_BITS+ANALOG_INPUT_SAMPLE-12);
+                osAnalogInputBuildup[osAnalogInputPos] >> (ANALOG_INPUT_BITS + ANALOG_INPUT_SAMPLE - 12);
 #endif
 #if ANALOG_INPUT_BITS + ANALOG_INPUT_SAMPLE == 12
-            osAnalogInputValues[osAnalogInputPos] =
-                osAnalogInputBuildup[osAnalogInputPos];
+            osAnalogInputValues[osAnalogInputPos] = osAnalogInputBuildup[osAnalogInputPos];
 #endif
             osAnalogInputBuildup[osAnalogInputPos] = 0;
             osAnalogInputCounter[osAnalogInputPos] = 0;
             // Start next conversion
-            if(++osAnalogInputPos>=ANALOG_INPUTS) osAnalogInputPos = 0;
+            if(++osAnalogInputPos >= ANALOG_INPUTS) osAnalogInputPos = 0;
             uint8_t channel = pgm_read_byte(&osAnalogInputChannels[osAnalogInputPos]);
 #if defined(ADCSRB) && defined(MUX5)
             if(channel & 8)  // Reading channel 0-7 or 8-15?
@@ -1123,6 +1141,77 @@ ISR(USART_UDRE_vect)
 #endif
 #endif
 
+#if defined(BLUETOOTH_SERIAL) && BLUETOOTH_SERIAL > 0
+#if !(defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1284p__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega1281__))
+ #error BlueTooth option cannot be used with your mainboard
+#endif
+#if BLUETOOTH_SERIAL > 1 && !(defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__))
+ #error BlueTooth serial 2 or 3 can be used only with boards based on ATMega2560 or ATMega1280
+#endif
+#if (BLUETOOTH_SERIAL == 1)
+ #define SIG_USARTx_RECV   SIG_USART1_RECV
+ #define USARTx_UDRE_vect  USART1_UDRE_vect
+ #define UDRx              UDR1
+ #define UCSRxA            UCSR1A
+ #define UCSRxB            UCSR1B
+ #define UBRRxH            UBRR1H
+ #define UBRRxL            UBRR1L
+ #define U2Xx              U2X1
+ #define UARTxENABLE       ((1<<RXEN1)|(1<<TXEN1)|(1<<RXCIE1)|(1<<UDRIE1))
+ #define UDRIEx            UDRIE1
+ #define RXxPIN            19
+#elif (BLUETOOTH_SERIAL == 2)
+ #define SIG_USARTx_RECV SIG_USART2_RECV
+ #define USARTx_UDRE_vect  USART2_UDRE_vect
+ #define UDRx              UDR2
+ #define UCSRxA            UCSR2A
+ #define UCSRxB            UCSR2B
+ #define UBRRxH            UBRR2H
+ #define UBRRxL            UBRR2L
+ #define U2Xx              U2X2
+ #define UARTxENABLE       ((1<<RXEN2)|(1<<TXEN2)|(1<<RXCIE2)|(1<<UDRIE2))
+ #define UDRIEx            UDRIE2
+ #define RXxPIN            17
+#elif (BLUETOOTH_SERIAL == 3)
+ #define SIG_USARTx_RECV SIG_USART3_RECV
+ #define USARTx_UDRE_vect  USART3_UDRE_vect
+ #define UDRx              UDR3
+ #define UCSRxA            UCSR3A
+ #define UCSRxB            UCSR3B
+ #define UBRRxH            UBRR3H
+ #define UBRRxL            UBRR3L
+ #define U2Xx              U2X3
+ #define UARTxENABLE       ((1<<RXEN3)|(1<<TXEN3)|(1<<RXCIE3)|(1<<UDRIE3))
+ #define UDRIEx            UDRIE3
+ #define RXxPIN            15
+#else
+ #error Wrong serial port number for BlueTooth
+#endif
+
+SIGNAL(SIG_USARTx_RECV)
+{
+    unsigned char c  =  UDRx;
+    rf_store_char(c, &rx_buffer);
+}
+
+volatile uint8_t txx_buffer_tail = 0;
+
+ISR(USARTx_UDRE_vect)
+{
+    if (tx_buffer.head == txx_buffer_tail)
+    {
+        // Buffer empty, so disable interrupts
+        bit_clear(UCSRxB, UDRIEx);
+    }
+    else
+    {
+        // There is more data in the output buffer. Send the next byte
+        uint8_t c = tx_buffer.buffer[txx_buffer_tail];
+        txx_buffer_tail = (txx_buffer_tail + 1) & SERIAL_TX_BUFFER_MASK;
+        UDRx = c;
+    }
+}
+#endif
 
 // Constructors ////////////////////////////////////////////////////////////////
 
@@ -1190,6 +1279,13 @@ try_again:
     bit_set(*_ucsrb, _txen);
     bit_set(*_ucsrb, _rxcie);
     bit_clear(*_ucsrb, _udrie);
+#if defined(BLUETOOTH_SERIAL) && BLUETOOTH_SERIAL > 0
+    WRITE(RXxPIN,1);            // Pullup on RXDx
+    UCSRxA  = (1<<U2Xx);
+    UBRRxH = (uint8_t)(((F_CPU / 4 / BLUETOOTH_BAUD -1) / 2) >> 8);
+    UBRRxL = (uint8_t)(((F_CPU / 4 / BLUETOOTH_BAUD -1) / 2) & 0xFF);
+    UCSRxB |= UARTxENABLE;
+#endif
 }
 
 void RFHardwareSerial::end()
@@ -1203,6 +1299,9 @@ void RFHardwareSerial::end()
     bit_clear(*_ucsrb, _rxcie);
     bit_clear(*_ucsrb, _udrie);
 
+#if defined(BLUETOOTH_SERIAL) && BLUETOOTH_SERIAL > 0
+	UCSRxB = 0;
+#endif
     // clear a  ny received data
     _rx_buffer->head = _rx_buffer->tail;
 }
@@ -1241,6 +1340,9 @@ void RFHardwareSerial::flush()
 {
     while (_tx_buffer->head != _tx_buffer->tail)
         ;
+#if defined(BLUETOOTH_SERIAL) && BLUETOOTH_SERIAL > 0
+    while (_tx_buffer->head != txx_buffer_tail) ;
+#endif
 }
 #ifdef COMPAT_PRE1
 void
@@ -1253,13 +1355,17 @@ RFHardwareSerial::write(uint8_t c)
 
     // If the output buffer is full, there's nothing for it other than to
     // wait for the interrupt handler to empty it a bit
-    while (i == _tx_buffer->tail)
-        ;
-
+    while (i == _tx_buffer->tail) ;
+#if defined(BLUETOOTH_SERIAL) && BLUETOOTH_SERIAL > 0
+    while (i == txx_buffer_tail) ;
+#endif
     _tx_buffer->buffer[_tx_buffer->head] = c;
     _tx_buffer->head = i;
 
     bit_set(*_ucsrb, _udrie);
+#if defined(BLUETOOTH_SERIAL) && BLUETOOTH_SERIAL > 0
+    bit_set(UCSRxB, UDRIEx);
+#endif
 #ifndef COMPAT_PRE1
     return 1;
 #endif

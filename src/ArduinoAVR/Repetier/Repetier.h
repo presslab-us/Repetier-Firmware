@@ -22,14 +22,14 @@
 #ifndef _REPETIER_H
 #define _REPETIER_H
 
-#define REPETIER_VERSION "0.92.2"
+#define REPETIER_VERSION "0.92.3"
 
 // ##########################################################################################
 // ##                                  Debug configuration                                 ##
 // ##########################################################################################
 // These are run time sqitchable debug flags
-enum debugFlags {DEB_ECHO= 0x1, DEB_INFO=0x2, DEB_ERROR =0x4,DEB_DRYRUN=0x8,
-                 DEB_COMMUNICATION=0x10, DEB_NOMOVES=0x20, DEB_DEBUG=0x40};
+enum debugFlags {DEB_ECHO = 0x1, DEB_INFO = 0x2, DEB_ERROR = 0x4,DEB_DRYRUN = 0x8,
+                 DEB_COMMUNICATION = 0x10, DEB_NOMOVES = 0x20, DEB_DEBUG = 0x40};
 
 /** Uncomment, to see detailed data for every move. Only for debugging purposes! */
 //#define DEBUG_QUEUE_MOVE
@@ -55,6 +55,7 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 //#define DEBUG_DELTA_OVERFLOW
 //#define DEBUG_DELTA_REALPOS
 //#define DEBUG_SPLIT
+//#define DEBUG_JAM
 // Find the longest segment length during a print
 //#define DEBUG_SEGMENT_LENGTH
 // Find the maximum real jerk during a print
@@ -110,15 +111,6 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 #define TOWER_ARRAY 3
 #define E_TOWER_ARRAY 4
 
-
-// Bits of the ADC converter
-#define ANALOG_INPUT_BITS 10
-// Build median from 2^ANALOG_INPUT_SAMPLE samples
-#if CPU_ARCH == ARCH_AVR
-#define ANALOG_INPUT_SAMPLE 5
-#else
-#define ANALOG_INPUT_SAMPLE 4
-#endif
 #define ANALOG_REF_AREF 0
 #define ANALOG_REF_AVCC _BV(REFS0)
 #define ANALOG_REF_INT_1_1 _BV(REFS1)
@@ -157,6 +149,7 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 #define CONTROLLER_SANGUINOLOLU_PANELOLU2 15
 #define CONTROLLER_GAMEDUINO2 16
 #define CONTROLLER_MIREGLI 17
+#define CONTROLLER_GATE_3NOVATICA 18
 
 //direction flags
 #define X_DIRPOS 1
@@ -246,8 +239,25 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 #define SHARED_COOLER 0
 #endif
 
+// Test for shared coolers between extruders and mainboard
+#if EXT0_EXTRUDER_COOLER_PIN > -1 && EXT0_EXTRUDER_COOLER_PIN == FAN_BOARD_PIN
+ #define SHARED_COOLER_BOARD_EXT 1
+#else
+ #define SHARED_COOLER_BOARD_EXT 0
+#endif
 
-#if NUM_EXTRUDER>0 && EXT0_TEMPSENSOR_TYPE<101
+#if defined(UI_SERVO_CONTROL) && UI_SERVO_CONTROL > FEATURE_SERVO
+ #undef UI_SERVO_CONTROL
+ #define UI_SERVO_CONTROL FEATURE_SERVO
+#endif
+
+#if (defined(EXT0_JAM_PIN) && EXT0_JAM_PIN > -1) || (defined(EXT1_JAM_PIN) && EXT1_JAM_PIN > -1) || (defined(EXT2_JAM_PIN) && EXT2_JAM_PIN > -1) || (defined(EXT3_JAM_PIN) && EXT3_JAM_PIN > -1) || (defined(EXT4_JAM_PIN) && EXT4_JAM_PIN > -1) || (defined(EXT5_JAM_PIN) && EXT5_JAM_PIN > -1)
+#define EXTRUDER_JAM_CONTROL 1
+#else
+#define EXTRUDER_JAM_CONTROL 0
+#endif
+
+#if NUM_EXTRUDER > 0 && EXT0_TEMPSENSOR_TYPE < 101
 #define EXT0_ANALOG_INPUTS 1
 #define EXT0_SENSOR_INDEX 0
 #define EXT0_ANALOG_CHANNEL EXT0_TEMPSENSOR_PIN
@@ -349,6 +359,8 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 #define MENU_MODE_SD_PAUSED 4
 #define MENU_MODE_FAN_RUNNING 8
 #define MENU_MODE_PRINTING 16
+#define MENU_MODE_FULL_PID 32
+#define MENU_MODE_DEADTIME 64
 
 #include "HAL.h"
 #include "gcode.h"
@@ -359,6 +371,14 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 
 #include "ui.h"
 #include "Communication.h"
+
+
+#if UI_DISPLAY_TYPE != DISPLAY_U8G
+  #if (defined(USER_KEY1_PIN) && (USER_KEY1_PIN==UI_DISPLAY_D5_PIN || USER_KEY1_PIN==UI_DISPLAY_D6_PIN || USER_KEY1_PIN==UI_DISPLAY_D7_PIN)) || (defined(USER_KEY2_PIN) && (USER_KEY2_PIN==UI_DISPLAY_D5_PIN || USER_KEY2_PIN==UI_DISPLAY_D6_PIN || USER_KEY2_PIN==UI_DISPLAY_D7_PIN)) || (defined(USER_KEY3_PIN) && (USER_KEY3_PIN==UI_DISPLAY_D5_PIN || USER_KEY3_PIN==UI_DISPLAY_D6_PIN || USER_KEY3_PIN==UI_DISPLAY_D7_PIN)) || (defined(USER_KEY4_PIN) && (USER_KEY4_PIN==UI_DISPLAY_D5_PIN || USER_KEY4_PIN==UI_DISPLAY_D6_PIN || USER_KEY4_PIN==UI_DISPLAY_D7_PIN))
+    #error "You cannot use DISPLAY_D5_PIN, DISPLAY_D6_PIN or DISPLAY_D7_PIN for "User Keys" with character LCD display"
+  #endif
+#endif
+
 
 #ifndef SDCARDDETECT
 #define SDCARDDETECT       -1
@@ -440,9 +460,9 @@ public:
 };
 
 extern const uint8 osAnalogInputChannels[] PROGMEM;
-extern uint8 osAnalogInputCounter[ANALOG_INPUTS];
-extern uint osAnalogInputBuildup[ANALOG_INPUTS];
-extern uint8 osAnalogInputPos; // Current sampling position
+//extern uint8 osAnalogInputCounter[ANALOG_INPUTS];
+//extern uint osAnalogInputBuildup[ANALOG_INPUTS];
+//extern uint8 osAnalogInputPos; // Current sampling position
 extern volatile uint osAnalogInputValues[ANALOG_INPUTS];
 extern uint8_t pwm_pos[NUM_EXTRUDER+3]; // 0-NUM_EXTRUDER = Heater 0-NUM_EXTRUDER of extruder, NUM_EXTRUDER = Heated bed, NUM_EXTRUDER+1 Board fan, NUM_EXTRUDER+2 = Fan
 #if USE_ADVANCE
@@ -498,7 +518,7 @@ extern unsigned int counterPeriodical;
 extern volatile uint8_t executePeriodical;
 extern uint8_t counter250ms;
 extern void writeMonitor();
-
+extern uint8_t fanKickstart;
 
 
 #if SDSUPPORT
@@ -535,7 +555,7 @@ public:
   void unmount();
   void startPrint();
   void pausePrint(bool intern = false);
-  void continuePrint(bool intern=false);
+  void continuePrint(bool intern = false);
   void stopPrint();
   inline void setIndex(uint32_t  newpos) { if(!sdactive) return; sdpos = newpos;file.seekSet(sdpos);}
   void printStatus();

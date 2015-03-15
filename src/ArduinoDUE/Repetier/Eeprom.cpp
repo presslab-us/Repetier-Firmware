@@ -30,23 +30,31 @@ void EEPROM::update(GCode *com)
     if(com->hasT() && com->hasP()) switch(com->T)
         {
         case 0:
-            if(com->hasS()) HAL::eprSetByte(com->P,(uint8_t)com->S);
+            if(com->hasS())
+                HAL::eprSetByte(com->P, (uint8_t)com->S);
             break;
         case 1:
-            if(com->hasS()) HAL::eprSetInt16(com->P,(int)com->S);
+            if(com->hasS())
+                HAL::eprSetInt16(com->P, (int16_t)com->S);
             break;
         case 2:
-            if(com->hasS()) HAL::eprSetInt32(com->P,(int32_t)com->S);
+            if(com->hasS())
+                HAL::eprSetInt32(com->P, (int32_t)com->S);
             break;
         case 3:
-            if(com->hasX()) HAL::eprSetFloat(com->P,com->X);
+            if(com->hasX())
+                HAL::eprSetFloat(com->P, com->X);
             break;
         }
     uint8_t newcheck = computeChecksum();
     if(newcheck != HAL::eprGetByte(EPR_INTEGRITY_BYTE))
-        HAL::eprSetByte(EPR_INTEGRITY_BYTE,newcheck);
+        HAL::eprSetByte(EPR_INTEGRITY_BYTE, newcheck);
     readDataFromEEPROM();
+#if MIXING_EXTRUDER
+    Extruder::selectExtruderById(Extruder::activeMixingExtruder);
+#else
     Extruder::selectExtruderById(Extruder::current->id);
+#endif
 #else
     Com::printErrorF(Com::tNoEEPROMSupport);
 #endif
@@ -56,8 +64,8 @@ void EEPROM::restoreEEPROMSettingsFromConfiguration()
 {
 #if EEPROM_MODE != 0
     baudrate = BAUDRATE;
-    maxInactiveTime = MAX_INACTIVE_TIME*1000L;
-    stepperInactiveTime = STEPPER_INACTIVE_TIME*1000L;
+    maxInactiveTime = MAX_INACTIVE_TIME * 1000L;
+    stepperInactiveTime = STEPPER_INACTIVE_TIME * 1000L;
     Printer::axisStepsPerMM[X_AXIS] = XAXIS_STEPS_PER_MM;
     Printer::axisStepsPerMM[Y_AXIS] = YAXIS_STEPS_PER_MM;
     Printer::axisStepsPerMM[Z_AXIS] = ZAXIS_STEPS_PER_MM;
@@ -292,7 +300,11 @@ void EEPROM::restoreEEPROMSettingsFromConfiguration()
 #endif
     initalizeUncached();
     Printer::updateDerivedParameter();
+#if MIXING_EXTRUDER
+    Extruder::selectExtruderById(Extruder::activeMixingExtruder);
+#else
     Extruder::selectExtruderById(Extruder::current->id);
+#endif
     Extruder::initHeatedBed();
     Com::printInfoFLN(Com::tEPRConfigResetDefaults);
 #else
@@ -542,14 +554,14 @@ void EEPROM::readDataFromEEPROM()
     if(version>2)
     {
         float sum = 0;
-        for(uint8_t i=0; i<9; i++)
+        for(uint8_t i = 0; i < 9; i++)
             Printer::autolevelTransformation[i] = HAL::eprGetFloat(EPR_AUTOLEVEL_MATRIX + (((int)i) << 2));
         if(isnan(Printer::autolevelTransformation[0]))   // a bug caused storage of matrix at the wrong place. Read from old position instead.
         {
-            for(uint8_t i=0; i<9; i++)
+            for(uint8_t i = 0; i < 9; i++)
                 Printer::autolevelTransformation[i] = HAL::eprGetFloat((EPR_AUTOLEVEL_MATRIX + (int)i) << 2);
         }
-        for(uint8_t i=0; i<9; i++)
+        for(uint8_t i = 0; i < 9; i++)
         {
             if(isnan(Printer::autolevelTransformation[i]))
                 sum += 10;
@@ -559,7 +571,7 @@ void EEPROM::readDataFromEEPROM()
         if(sum < 2.7 || sum > 3.3)
             Printer::resetTransformationMatrix(false);
         Printer::setAutolevelActive(HAL::eprGetByte(EPR_AUTOLEVEL_ACTIVE));
-        Com::printArrayFLN(Com::tTransformationMatrix,Printer::autolevelTransformation,9,6);
+        Com::printArrayFLN(Com::tTransformationMatrix,Printer::autolevelTransformation, 9, 6);
     }
 #endif
 #if MIXING_EXTRUDER
@@ -663,15 +675,18 @@ void EEPROM::readDataFromEEPROM()
             storeMixingRatios(false);
 #endif
         }
-        if(version < 10) {
+        if(version < 10)
+        {
             HAL::eprSetFloat(EPR_AXISCOMP_TANXY,AXISCOMP_TANXY);
             HAL::eprSetFloat(EPR_AXISCOMP_TANYZ,AXISCOMP_TANYZ);
             HAL::eprSetFloat(EPR_AXISCOMP_TANXZ,AXISCOMP_TANXZ);
         }
-        if(version < 11) {
+        if(version < 11)
+        {
             HAL::eprSetByte(EPR_DISTORTION_CORRECTION_ENABLED, 0);
         }
-        if(version < 12) {
+        if(version < 12)
+        {
             HAL::eprSetFloat(EPR_RETRACTION_LENGTH,RETRACTION_LENGTH);
             HAL::eprSetFloat(EPR_RETRACTION_LONG_LENGTH,RETRACTION_LONG_LENGTH);
             HAL::eprSetFloat(EPR_RETRACTION_SPEED,RETRACTION_SPEED);
@@ -754,12 +769,12 @@ void EEPROM::init()
 void EEPROM::updatePrinterUsage()
 {
 #if EEPROM_MODE != 0
-    if(Printer::filamentPrinted == 0) return; // No miles only enabled
+    if(Printer::filamentPrinted == 0 || (Printer::flag2 & PRINTER_FLAG2_RESET_FILAMENT_USAGE) != 0) return; // No miles only enabled
     uint32_t seconds = (HAL::timeInMilliseconds() - Printer::msecondsPrinting) / 1000;
     seconds += HAL::eprGetInt32(EPR_PRINTING_TIME);
     HAL::eprSetInt32(EPR_PRINTING_TIME,seconds);
     HAL::eprSetFloat(EPR_PRINTING_DISTANCE,HAL::eprGetFloat(EPR_PRINTING_DISTANCE) + Printer::filamentPrinted * 0.001);
-    Printer::filamentPrinted = 0;
+    Printer::flag2 |= PRINTER_FLAG2_RESET_FILAMENT_USAGE;
     Printer::msecondsPrinting = HAL::timeInMilliseconds();
     updateChecksum();
     Commands::reportPrinterUsage();
@@ -1060,7 +1075,8 @@ void EEPROM::restoreMixingRatios()
 
 #endif
 
-void EEPROM::setZCorrection(int32_t c,int index) {
+void EEPROM::setZCorrection(int32_t c,int index)
+{
     HAL::eprSetInt32(2048 + (index << 2), c);
 }
 

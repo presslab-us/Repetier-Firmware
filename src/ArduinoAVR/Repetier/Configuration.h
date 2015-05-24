@@ -27,8 +27,8 @@
    to see and change the data. You can also upload it to newer/older versions. The system
    will silently add new options, so compilation continues to work.
 
-   This file is optimized for version 0.91
-   generator: http://www.repetier.com/firmware/v091/
+   This file is optimized for version 0.92
+   generator: http://www.repetier.com/firmware/v092/
 
    If you are in doubt which named functions use which pins on your board, please check the
    pins.h for the used name->pin assignments and your board documentation to verify it is
@@ -38,102 +38,112 @@
 
 #define NUM_EXTRUDER 2
 #define MOTHERBOARD 301
-
 #include "pins.h"
 
 // ################## EDIT THESE SETTINGS MANUALLY ################
-// Microstepping mode of your RAMBO board
+//  Microstepping mod eof your RAMO board
 #define MICROSTEP_MODES { 16,16,16,16,16 } // [1,2,4,8,16]
 // Motor Current setting (Only functional when motor driver current ref pins are connected to a digital trimpot on supported boards)
-#define MOTOR_CURRENT { 230,230,230,160,160 } // Values 0-255 (RAMBO 135 = ~0.75A, 185 = ~1A)
+#define MOTOR_CURRENT_PERCENT { 200,200,200,160,160 }
 
 // ################ END MANUAL SETTINGS ##########################
 
+#define FAN_PIN HEATER_1_PIN
 #define FAN_BOARD_PIN -1
 
 //#define EXTERNALSERIAL  use Arduino serial library instead of build in. Requires more ram, has only 63 byte input buffer.
 // Uncomment the following line if you are using arduino compatible firmware made for Arduino version earlier then 1.0
 // If it is incompatible you will get compiler errors about write functions not beeing compatible!
 //#define COMPAT_PRE1
+#define BLUETOOTH_SERIAL  -1
+#define BLUETOOTH_BAUD  115200
 #define MIXING_EXTRUDER 1
 
 #define DRIVE_SYSTEM 3
-#define XAXIS_STEPS_PER_MM 80
-#define YAXIS_STEPS_PER_MM 80
-#define ZAXIS_STEPS_PER_MM 80
-#define EXTRUDER_FAN_COOL_TEMP -50
+#define XAXIS_STEPS_PER_MM 81
+#define YAXIS_STEPS_PER_MM 81
+#define ZAXIS_STEPS_PER_MM 81
+#define EXTRUDER_FAN_COOL_TEMP 50
 #define PDM_FOR_EXTRUDER 0
 #define PDM_FOR_COOLER 0
 #define DECOUPLING_TEST_MAX_HOLD_VARIANCE 25
 #define DECOUPLING_TEST_MIN_TEMP_RISE 1
+#define KILL_IF_SENSOR_DEFECT 1
+#define RETRACT_ON_PAUSE 2
+#define PAUSE_START_COMMANDS ""
+#define PAUSE_END_COMMANDS ""
 #define EXT0_X_OFFSET 0
 #define EXT0_Y_OFFSET 0
-#define EXT0_STEPS_PER_MM 93
+#define EXT0_Z_OFFSET 0
+#define EXT0_STEPS_PER_MM 84
 #define EXT0_TEMPSENSOR_TYPE 8
-#define EXT0_TEMPSENSOR_PIN TEMP_0_PIN
-#define EXT0_HEATER_PIN HEATER_0_PIN
+#define EXT0_TEMPSENSOR_PIN TEMP_2_PIN
+#define EXT0_HEATER_PIN HEATER_2_PIN
 #define EXT0_STEP_PIN ORIG_E0_STEP_PIN
 #define EXT0_DIR_PIN ORIG_E0_DIR_PIN
 #define EXT0_INVERSE 1
 #define EXT0_ENABLE_PIN E0_ENABLE_PIN
 #define EXT0_ENABLE_ON 0
-#define EXT0_MAX_FEEDRATE 160
+#define EXT0_MAX_FEEDRATE 150
 #define EXT0_MAX_START_FEEDRATE 20
-#define EXT0_MAX_ACCELERATION 1000
+#define EXT0_MAX_ACCELERATION 3000
 #define EXT0_HEAT_MANAGER 3
 #define EXT0_WATCHPERIOD 1
-#define EXT0_PID_INTEGRAL_DRIVE_MAX 180
+#define EXT0_PID_INTEGRAL_DRIVE_MAX 140
 #define EXT0_PID_INTEGRAL_DRIVE_MIN 40
-#define EXT0_PID_PGAIN_OR_DEAD_TIME 3
+#define EXT0_PID_PGAIN_OR_DEAD_TIME 2
 #define EXT0_PID_I 0
 #define EXT0_PID_D 0
-#define EXT0_PID_MAX 255
+#define EXT0_PID_MAX 220
 #define EXT0_ADVANCE_K 0
-#define EXT0_ADVANCE_L 40.0
+#define EXT0_ADVANCE_L 100
 #define EXT0_ADVANCE_BACKLASH_STEPS 0
 #define EXT0_WAIT_RETRACT_TEMP 150
 #define EXT0_WAIT_RETRACT_UNITS 0
 #define EXT0_SELECT_COMMANDS ""
 #define EXT0_DESELECT_COMMANDS ""
-#define EXT0_EXTRUDER_COOLER_PIN HEATER_2_PIN
-#define EXT0_EXTRUDER_COOLER_SPEED 255
+#define EXT0_EXTRUDER_COOLER_PIN ORIG_FAN_PIN
+#define EXT0_EXTRUDER_COOLER_SPEED 220
 #define EXT0_DECOUPLE_TEST_PERIOD 18000
+#define EXT0_JAM_PIN -1
+#define EXT0_JAM_PULLUP 0
 #define EXT1_X_OFFSET 0
 #define EXT1_Y_OFFSET 0
-#define EXT1_STEPS_PER_MM 93
+#define EXT1_Z_OFFSET 0
+#define EXT1_STEPS_PER_MM 84
 #define EXT1_TEMPSENSOR_TYPE 8
-#define EXT1_TEMPSENSOR_PIN TEMP_0_PIN
+#define EXT1_TEMPSENSOR_PIN TEMP_2_PIN
 #define EXT1_HEATER_PIN -1
 #define EXT1_STEP_PIN ORIG_E1_STEP_PIN
 #define EXT1_DIR_PIN ORIG_E1_DIR_PIN
 #define EXT1_INVERSE 1
 #define EXT1_ENABLE_PIN E1_ENABLE_PIN
 #define EXT1_ENABLE_ON 0
-#define EXT1_MAX_FEEDRATE 160
+#define EXT1_MAX_FEEDRATE 150
 #define EXT1_MAX_START_FEEDRATE 20
-#define EXT1_MAX_ACCELERATION 1000
+#define EXT1_MAX_ACCELERATION 3000
 #define EXT1_HEAT_MANAGER 3
 #define EXT1_WATCHPERIOD 1
-#define EXT1_PID_INTEGRAL_DRIVE_MAX 180
+#define EXT1_PID_INTEGRAL_DRIVE_MAX 140
 #define EXT1_PID_INTEGRAL_DRIVE_MIN 40
-#define EXT1_PID_PGAIN_OR_DEAD_TIME 3
+#define EXT1_PID_PGAIN_OR_DEAD_TIME 2
 #define EXT1_PID_I 0
 #define EXT1_PID_D 0
-#define EXT1_PID_MAX 255
+#define EXT1_PID_MAX 220
 #define EXT1_ADVANCE_K 0
-#define EXT1_ADVANCE_L 40.0
+#define EXT1_ADVANCE_L 100
 #define EXT1_ADVANCE_BACKLASH_STEPS 0
 #define EXT1_WAIT_RETRACT_TEMP 150
 #define EXT1_WAIT_RETRACT_UNITS 0
 #define EXT1_SELECT_COMMANDS ""
 #define EXT1_DESELECT_COMMANDS ""
 #define EXT1_EXTRUDER_COOLER_PIN -1
-#define EXT1_EXTRUDER_COOLER_SPEED 255
+#define EXT1_EXTRUDER_COOLER_SPEED 220
+#define EXT1_DECOUPLE_TEST_PERIOD 18000
+#define EXT1_JAM_PIN -1
+#define EXT1_JAM_PULLUP 0
 
-/** Allow retraction with G10/G11 removing requirement for retraction setting in slicer. Also allows filament change if lcd is configured. */
-#define FEATURE_RETRACTION 1
-/** autoretract converts pure axtrusion moves into retractions. Beware that 
- simple extrusion e.g. over Repetier-Host will then not work! */
+#define FEATURE_RETRACTION 0
 #define AUTORETRACT_ENABLED 0
 #define RETRACTION_LENGTH 3
 #define RETRACTION_LONG_LENGTH 13
@@ -142,30 +152,19 @@
 #define RETRACTION_UNDO_EXTRA_LENGTH 0
 #define RETRACTION_UNDO_EXTRA_LONG_LENGTH 0
 #define RETRACTION_UNDO_SPEED 20
-
-/**
-If you have a lcd display, you can do a filament switch with M600.
-It will change the current extruders filament and temperature must already be high enough.
-*/
 #define FILAMENTCHANGE_X_POS 0
 #define FILAMENTCHANGE_Y_POS 0
-#define FILAMENTCHANGE_Z_ADD 1
-/** Does a homing procedure after a filament change. This is good in case
-you moved the extruder while changing filament during print.
-0 = no homing, 1 = xy homing, 2 = xyz homing
-*/
+#define FILAMENTCHANGE_Z_ADD  2
 #define FILAMENTCHANGE_REHOME 1
-/** Will first retract short distance, go to change position and then retract longretract.
-Retractions speeds are taken from RETRACTION_SPEED and RETRACTION_UNDO_SPEED
-*/
-#define FILAMENTCHANGE_SHORTRETRACT 30
-#define FILAMENTCHANGE_LONGRETRACT 30
+#define FILAMENTCHANGE_SHORTRETRACT 5
+#define FILAMENTCHANGE_LONGRETRACT 50
+#define JAM_STEPS 220
+#define JAM_SLOWDOWN_STEPS 320
+#define JAM_SLOWDOWN_TO 70
+#define JAM_ERROR_STEPS 500
+#define JAM_MIN_STEPS 10
+#define JAM_ACTION 1
 
-/** PID control only works target temperature +/- PID_CONTROL_RANGE.
-If you get much overshoot at the first temperature set, because the heater is going full power too long, you
-need to increase this value. For one 6.8 Ohm heater 10 is ok. With two 6.8 Ohm heater use 15.
-*/
-#define EXT1_DECOUPLE_TEST_PERIOD 18000
 #define RETRACT_DURING_HEATUP true
 #define PID_CONTROL_RANGE 20
 #define SKIP_M109_IF_WITHIN 2
@@ -180,7 +179,7 @@ need to increase this value. For one 6.8 Ohm heater 10 is ok. With two 6.8 Ohm h
 #define USER_THERMISTORTABLE2 {}
 #define GENERIC_THERM_VREF 5
 #define GENERIC_THERM_NUM_ENTRIES 33
-#define HEATER_PWM_SPEED 0
+#define HEATER_PWM_SPEED 2
 
 // ############# Heated bed configuration ########################
 
@@ -188,13 +187,13 @@ need to increase this value. For one 6.8 Ohm heater 10 is ok. With two 6.8 Ohm h
 #define HEATED_BED_MAX_TEMP 120
 #define SKIP_M190_IF_WITHIN 5
 #define HEATED_BED_SENSOR_TYPE 8
-#define HEATED_BED_SENSOR_PIN TEMP_1_PIN
-#define HEATED_BED_HEATER_PIN HEATER_1_PIN
+#define HEATED_BED_SENSOR_PIN TEMP_0_PIN
+#define HEATED_BED_HEATER_PIN HEATER_0_PIN
 #define HEATED_BED_SET_INTERVAL 5000
 #define HEATED_BED_HEAT_MANAGER 3
-#define HEATED_BED_PID_INTEGRAL_DRIVE_MAX 192
+#define HEATED_BED_PID_INTEGRAL_DRIVE_MAX 130
 #define HEATED_BED_PID_INTEGRAL_DRIVE_MIN 10
-#define HEATED_BED_PID_PGAIN_OR_DEAD_TIME 20
+#define HEATED_BED_PID_PGAIN_OR_DEAD_TIME   45
 #define HEATED_BED_PID_IGAIN   0
 #define HEATED_BED_PID_DGAIN 0
 #define HEATED_BED_PID_MAX 255
@@ -264,6 +263,14 @@ need to increase this value. For one 6.8 Ohm heater 10 is ok. With two 6.8 Ohm h
 #define X_MIN_POS -140
 #define Y_MIN_POS -140
 #define Z_MIN_POS 0
+#define DISTORTION_CORRECTION 1
+#define DISTORTION_CORRECTION_POINTS 5
+#define DISTORTION_CORRECTION_R 120
+#define DISTORTION_PERMANENT 1
+#define DISTORTION_UPDATE_FREQUENCY 15
+#define DISTORTION_START_DEGRADE 0.5
+#define DISTORTION_END_HEIGHT 0.6
+#define DISTORTION_EXTRAPOLATE_CORNERS 0
 
 // ##########################################################################################
 // ##                           Movement settings                                          ##
@@ -272,11 +279,11 @@ need to increase this value. For one 6.8 Ohm heater 10 is ok. With two 6.8 Ohm h
 #define FEATURE_BABYSTEPPING 0
 #define BABYSTEP_MULTIPLICATOR 1
 
-#define DELTA_SEGMENTS_PER_SECOND_PRINT 200 // Move accurate setting for print moves
+#define DELTA_SEGMENTS_PER_SECOND_PRINT 260 // Move accurate setting for print moves
 #define DELTA_SEGMENTS_PER_SECOND_MOVE 120 // Less accurate setting for other moves
 
 // Delta settings
-#define DELTA_DIAGONAL_ROD 293 // mm
+#define DELTA_DIAGONAL_ROD 290 // mm
 #define DELTA_ALPHA_A 210
 #define DELTA_ALPHA_B 330
 #define DELTA_ALPHA_C 90
@@ -289,8 +296,8 @@ need to increase this value. For one 6.8 Ohm heater 10 is ok. With two 6.8 Ohm h
 #define END_EFFECTOR_HORIZONTAL_OFFSET 0
 #define CARRIAGE_HORIZONTAL_OFFSET 0
 #define DELTA_MAX_RADIUS 140
-#define ROD_RADIUS 130
-#define PRINTER_RADIUS 130
+#define ROD_RADIUS 128.5
+#define PRINTER_RADIUS 128.5
 #define DELTA_HOME_ON_POWER 1
 #define STEP_COUNTER
 #define DELTA_X_ENDSTOP_OFFSET_STEPS 0
@@ -319,13 +326,12 @@ need to increase this value. For one 6.8 Ohm heater 10 is ok. With two 6.8 Ohm h
 #define STEP_DOUBLER_FREQUENCY 12000
 #define ALLOW_QUADSTEPPING 1
 #define DOUBLE_STEP_DELAY 1 // time in microseconds
-#define MAX_HALFSTEP_INTERVAL 1999
-#define MAX_ACCELERATION_UNITS_PER_SQ_SECOND_X 1500
-#define MAX_ACCELERATION_UNITS_PER_SQ_SECOND_Y 1500
-#define MAX_ACCELERATION_UNITS_PER_SQ_SECOND_Z 1500
-#define MAX_TRAVEL_ACCELERATION_UNITS_PER_SQ_SECOND_X 2200
-#define MAX_TRAVEL_ACCELERATION_UNITS_PER_SQ_SECOND_Y 2200
-#define MAX_TRAVEL_ACCELERATION_UNITS_PER_SQ_SECOND_Z 2200
+#define MAX_ACCELERATION_UNITS_PER_SQ_SECOND_X 2000
+#define MAX_ACCELERATION_UNITS_PER_SQ_SECOND_Y 2000
+#define MAX_ACCELERATION_UNITS_PER_SQ_SECOND_Z 2000
+#define MAX_TRAVEL_ACCELERATION_UNITS_PER_SQ_SECOND_X 3000
+#define MAX_TRAVEL_ACCELERATION_UNITS_PER_SQ_SECOND_Y 3000
+#define MAX_TRAVEL_ACCELERATION_UNITS_PER_SQ_SECOND_Z 3000
 #define MAX_JERK 30
 #define MAX_ZJERK 0.3
 #define PRINTLINE_CACHE_SIZE 21
@@ -334,15 +340,15 @@ need to increase this value. For one 6.8 Ohm heater 10 is ok. With two 6.8 Ohm h
 #define FEATURE_TWO_XSTEPPER 0
 #define X2_STEP_PIN   ORIG_E1_STEP_PIN
 #define X2_DIR_PIN    ORIG_E1_DIR_PIN
-#define X2_ENABLE_PIN ORIG_E1_ENABLE_PIN
+#define X2_ENABLE_PIN E1_ENABLE_PIN
 #define FEATURE_TWO_YSTEPPER 0
 #define Y2_STEP_PIN   ORIG_E1_STEP_PIN
 #define Y2_DIR_PIN    ORIG_E1_DIR_PIN
-#define Y2_ENABLE_PIN ORIG_E1_ENABLE_PIN
+#define Y2_ENABLE_PIN E1_ENABLE_PIN
 #define FEATURE_TWO_ZSTEPPER 0
 #define Z2_STEP_PIN   ORIG_E1_STEP_PIN
 #define Z2_DIR_PIN    ORIG_E1_DIR_PIN
-#define Z2_ENABLE_PIN ORIG_E1_ENABLE_PIN
+#define Z2_ENABLE_PIN E1_ENABLE_PIN
 #define FEATURE_DITTO_PRINTING 0
 #define USE_ADVANCE 1
 #define ENABLE_QUADRATIC_ADVANCE 0
@@ -354,7 +360,6 @@ need to increase this value. For one 6.8 Ohm heater 10 is ok. With two 6.8 Ohm h
 #define ENABLE_POWER_ON_STARTUP 1
 #define POWER_INVERTING 0
 #define KILL_METHOD 1
-#define GCODE_BUFFER_SIZE 2
 #define ACK_WITH_LINENUMBER 1
 #define WAITING_IDENTIFIER "wait"
 #define ECHO_ON_EXECUTE 0
@@ -372,7 +377,14 @@ WARNING: Servos can draw a considerable amount of current. Make sure your system
 #define SERVO1_PIN -1
 #define SERVO2_PIN -1
 #define SERVO3_PIN -1
-#define FEATURE_WATCHDOG 1
+#define SERVO0_NEUTRAL_POS  -1
+#define SERVO1_NEUTRAL_POS  -1
+#define SERVO2_NEUTRAL_POS  -1
+#define SERVO3_NEUTRAL_POS  -1
+#define UI_SERVO_CONTROL 0
+#define FAN_KICKSTART_TIME  200
+
+        #define FEATURE_WATCHDOG 1
 
 // #################### Z-Probing #####################
 
@@ -388,54 +400,9 @@ WARNING: Servos can draw a considerable amount of current. Make sure your system
 #define Z_PROBE_XY_SPEED 150
 #define Z_PROBE_SWITCHING_DISTANCE 1
 #define Z_PROBE_REPETITIONS 2
-#define Z_PROBE_HEIGHT 0
+#define Z_PROBE_HEIGHT -0.05
 #define Z_PROBE_START_SCRIPT ""
 #define Z_PROBE_FINISHED_SCRIPT ""
-
-/* DISTORTION_CORRECTION compensates the distortion caused by mechanical imprecisions of nonlinear (i.e. DELTA) printers
- * assumes that the floor is plain (i.e. glass plate)
- *     and that it is perpendicular to the towers
- *     and that the (0,0) is in center
- * requires z-probe
- * G29 measures the Z offset in matrix NxN points (due to nature of the delta printer, the corners are extrapolated instead of measured)
- * and compensate the distortion
- * more points means better compensation, but consumes more memory and takes more time
- * DISTORTION_CORRECTION_R is the distance of last row or collumn from center
- */
-
-#define DISTORTION_CORRECTION         0
-#define DISTORTION_CORRECTION_POINTS  5
-#define DISTORTION_CORRECTION_R       80
-/** Uses eeprom instead of ram. Allows bigger matrix (up to 22x22) without any ram cost.
-  Especially on arm based systems with cached eeprom it is good, on AVR it has a small
-  performance penalty.
-*/
-#define DISTORTION_PERMANENT          1
-/** Correction computation is not a cheap operation and changes are only small. So it
-is not necessary to update it for every subline computed. For example lets take DELTA_SEGMENTS_PER_SECOND_PRINT = 150
-and fastest print speed 100 mm/s. So we have a maximum segment length of 100/150 = 0.66 mm.
-Now lats say our point field is 200 x 200 mm with 9 x 9 points. So between 2 points we have
-200 / (9-1) = 25 mm. So we need at least 25 / 0.66 = 37 lines to move to the next measuring
-point. So updting correction every 15 calls gives us at least 2 updates between the
-measured points.
-NOTE: Explicit z changes will always trigger an update!
-*/
-#define DISTORTION_UPDATE_FREQUENCY   15
-/** z distortion degrades to 0 from this height on. You should start after the first layer to get
-best bonding with surface. */
-#define DISTORTION_START_DEGRADE 0.5
-/** z distortion correction gets down to 0 at this height. */
-#define DISTORTION_END_HEIGHT 1.5
-/** If your corners measurement points are not measureable with given radius, you can
-set this to 1. It then omits the outer measurement points allowing a larger correction area.*/
-#define DISTORTION_EXTRAPOLATE_CORNERS 0
-
-/* If your printer is not exactly square but is more like a parallelogramm, you can
-use this to compensate the effect of printing squares like parallelogramms. Set the
-parameter to then tangens of the deviation from 90° when you print a square object.
-E.g. if you angle is 91° enter tan(1) = 0.017. If error doubles you have the wrong sign.
-Always hard to say since the other angle is 89° in this case!
-*/
 #define FEATURE_AUTOLEVEL 1
 #define Z_PROBE_X1 -86.6
 #define Z_PROBE_Y1 -50
@@ -443,7 +410,6 @@ Always hard to say since the other angle is 89° in this case!
 #define Z_PROBE_Y2 -50
 #define Z_PROBE_X3 0
 #define Z_PROBE_Y3 100
-
 #define FEATURE_AXISCOMP 0
 #define AXISCOMP_TANXY 0
 #define AXISCOMP_TANYZ 0
@@ -455,6 +421,8 @@ Always hard to say since the other angle is 89° in this case!
 #define SDCARDDETECTINVERTED 0
 #endif
 #define SD_EXTENDED_DIR 1 /** Show extended directory including file length. Don't use this with Pronterface! */
+#define SD_RUN_ON_STOP ""
+#define SD_STOP_HEATER_AND_MOTORS_ON_STOP 1
 #define ARC_SUPPORT 0
 #define FEATURE_MEMORY_POSITION 1
 #define FEATURE_CHECKSUM_FORCED 0
@@ -470,6 +438,7 @@ Always hard to say since the other angle is 89° in this case!
 #define UI_AUTORETURN_TO_MENU_AFTER 30000
 #define FEATURE_UI_KEYS 0
 #define UI_ENCODER_SPEED 1
+#define UI_REVERSE_ENCODER 0
 #define UI_KEY_BOUNCETIME 10
 #define UI_KEY_FIRST_REPEAT 500
 #define UI_KEY_REDUCE_REPEAT 50
@@ -478,7 +447,8 @@ Always hard to say since the other angle is 89° in this case!
 #define CASE_LIGHTS_PIN -1
 #define CASE_LIGHT_DEFAULT_ON 1
 #define UI_START_SCREEN_DELAY 1000
-/**
+#define UI_DYNAMIC_ENCODER_SPEED 1
+        /**
 Beeper sound definitions for short beeps during key actions
 and longer beeps for important actions.
 Parameter is delay in microseconds and the secons is the number of repetitions.
@@ -497,6 +467,11 @@ Values must be in range 1..255
 #define UI_SET_EXTRUDER_FEEDRATE 2
 #define UI_SET_EXTRUDER_RETRACT_DISTANCE 4.5
 
+
+#define NUM_MOTOR_DRIVERS 0
+
+
+
 #endif
 
 /* Below you will find the configuration string, that created this Configuration.h
@@ -506,9 +481,11 @@ Values must be in range 1..255
     "editMode": 2,
     "processor": 0,
     "baudrate": 115200,
-    "xStepsPerMM": 80,
-    "yStepsPerMM": 80,
-    "zStepsPerMM": 80,
+    "bluetoothSerial": -1,
+    "bluetoothBaudrate": 115200,
+    "xStepsPerMM": 81,
+    "yStepsPerMM": 81,
+    "zStepsPerMM": 81,
     "xInvert": "1",
     "xInvertEnable": "0",
     "eepromMode": 2,
@@ -521,34 +498,36 @@ Values must be in range 1..255
             "id": 0,
             "heatManager": 3,
             "pidDriveMin": 40,
-            "pidDriveMax": 180,
-            "pidMax": 255,
+            "pidDriveMax": 140,
+            "pidMax": 220,
             "sensorType": 8,
-            "sensorPin": "TEMP_0_PIN",
-            "heaterPin": "HEATER_0_PIN",
-            "maxFeedrate": 160,
+            "sensorPin": "TEMP_2_PIN",
+            "heaterPin": "HEATER_2_PIN",
+            "maxFeedrate": 150,
             "startFeedrate": 20,
             "invert": "1",
             "invertEnable": "0",
-            "acceleration": 1000,
+            "acceleration": 3000,
             "watchPeriod": 1,
-            "pidP": 3,
+            "pidP": 2,
             "pidI": 0,
             "pidD": 0,
             "advanceK": 0,
-            "advanceL": 40.0,
+            "advanceL": 100,
             "waitRetractTemp": 150,
             "waitRetractUnits": 0,
             "waitRetract": 0,
-            "stepsPerMM": 93,
-            "coolerPin": "HEATER_2_PIN",
-            "coolerSpeed": 255,
+            "stepsPerMM": 84,
+            "coolerPin": "ORIG_FAN_PIN",
+            "coolerSpeed": 220,
             "selectCommands": "",
             "deselectCommands": "",
             "xOffset": 0,
             "yOffset": 0,
+            "zOffset": 0,
             "xOffsetSteps": 0,
             "yOffsetSteps": 0,
+            "zOffsetSteps": 0,
             "stepper": {
                 "name": "Extruder 0",
                 "step": "ORIG_E0_STEP_PIN",
@@ -556,40 +535,44 @@ Values must be in range 1..255
                 "enable": "E0_ENABLE_PIN"
             },
             "advanceBacklashSteps": 0,
-            "decoupleTestPeriod": 15
+            "decoupleTestPeriod": 18,
+            "jamPin": -1,
+            "jamPullup": "0"
         },
         {
             "id": 1,
             "heatManager": 3,
             "pidDriveMin": 40,
-            "pidDriveMax": 180,
-            "pidMax": 255,
+            "pidDriveMax": 140,
+            "pidMax": 220,
             "sensorType": 8,
-            "sensorPin": "TEMP_0_PIN",
+            "sensorPin": "TEMP_2_PIN",
             "heaterPin": "-1",
-            "maxFeedrate": 160,
+            "maxFeedrate": 150,
             "startFeedrate": 20,
             "invert": "1",
             "invertEnable": "0",
-            "acceleration": 1000,
+            "acceleration": 3000,
             "watchPeriod": 1,
-            "pidP": 3,
+            "pidP": 2,
             "pidI": 0,
             "pidD": 0,
             "advanceK": 0,
-            "advanceL": 40.0,
+            "advanceL": 100,
             "waitRetractTemp": 150,
             "waitRetractUnits": 0,
             "waitRetract": 0,
-            "stepsPerMM": 93,
+            "stepsPerMM": 84,
             "coolerPin": "-1",
-            "coolerSpeed": 255,
+            "coolerSpeed": 220,
             "selectCommands": "",
             "deselectCommands": "",
             "xOffset": 0,
             "yOffset": 0,
+            "zOffset": 0,
             "xOffsetSteps": 0,
             "yOffsetSteps": 0,
+            "zOffsetSteps": 0,
             "stepper": {
                 "name": "Extruder 1",
                 "step": "ORIG_E1_STEP_PIN",
@@ -597,7 +580,9 @@ Values must be in range 1..255
                 "enable": "E1_ENABLE_PIN"
             },
             "advanceBacklashSteps": 0,
-            "decoupleTestPeriod": 15
+            "decoupleTestPeriod": 18,
+            "jamPin": -1,
+            "jamPullup": "0"
         }
     ],
     "uiLanguage": 0,
@@ -612,16 +597,16 @@ Values must be in range 1..255
     "driveSystem": 3,
     "xMaxSpeed": 250,
     "xHomingSpeed": 120,
-    "xTravelAcceleration": 2200,
-    "xPrintAcceleration": 1500,
+    "xTravelAcceleration": 3000,
+    "xPrintAcceleration": 2000,
     "yMaxSpeed": 250,
     "yHomingSpeed": 120,
-    "yTravelAcceleration": 2200,
-    "yPrintAcceleration": 1500,
+    "yTravelAcceleration": 3000,
+    "yPrintAcceleration": 2000,
     "zMaxSpeed": 250,
     "zHomingSpeed": 120,
-    "zTravelAcceleration": 2200,
-    "zPrintAcceleration": 1500,
+    "zTravelAcceleration": 3000,
+    "zPrintAcceleration": 2000,
     "xMotor": {
         "name": "X motor",
         "step": "ORIG_X_STEP_PIN",
@@ -646,12 +631,12 @@ Values must be in range 1..255
     "backlashZ": 0,
     "stepperInactiveTime": 360,
     "maxInactiveTime": 0,
-    "xMinPos": 0,
-    "yMinPos": 0,
+    "xMinPos": -140,
+    "yMinPos": -140,
     "zMinPos": 0,
-    "xLength": 200,
-    "yLength": 200,
-    "zLength": 380,
+    "xLength": 140,
+    "yLength": 140,
+    "zLength": 370,
     "alwaysCheckEndstops": "1",
     "disableX": "0",
     "disableY": "0",
@@ -663,10 +648,10 @@ Values must be in range 1..255
     "xEndstopBack": 5,
     "yEndstopBack": 5,
     "zEndstopBack": 5,
-    "deltaSegmentsPerSecondPrint": 200,
+    "deltaSegmentsPerSecondPrint": 260,
     "deltaSegmentsPerSecondTravel": 120,
-    "deltaDiagonalRod": 293,
-    "deltaHorizontalRadius": 130,
+    "deltaDiagonalRod": 290,
+    "deltaHorizontalRadius": 128.5,
     "deltaAlphaA": 210,
     "deltaAlphaB": 330,
     "deltaAlphaC": 90,
@@ -687,7 +672,6 @@ Values must be in range 1..255
     "stepDoublerFrequency": 12000,
     "allowQuadstepping": "1",
     "doubleStepDelay": 1,
-    "maxHalfstepInterval": 1999,
     "maxJerk": 30,
     "maxZJerk": 0.3,
     "moveCacheSize": 21,
@@ -706,21 +690,21 @@ Values must be in range 1..255
         "name": "Extruder 1",
         "step": "ORIG_E1_STEP_PIN",
         "dir": "ORIG_E1_DIR_PIN",
-        "enable": "ORIG_E1_ENABLE_PIN"
+        "enable": "E1_ENABLE_PIN"
     },
     "mirrorY": 0,
     "mirrorYMotor": {
         "name": "Extruder 1",
         "step": "ORIG_E1_STEP_PIN",
         "dir": "ORIG_E1_DIR_PIN",
-        "enable": "ORIG_E1_ENABLE_PIN"
+        "enable": "E1_ENABLE_PIN"
     },
     "mirrorZ": 0,
     "mirrorZMotor": {
         "name": "Extruder 1",
         "step": "ORIG_E1_STEP_PIN",
         "dir": "ORIG_E1_DIR_PIN",
-        "enable": "ORIG_E1_ENABLE_PIN"
+        "enable": "E1_ENABLE_PIN"
     },
     "dittoPrinting": "0",
     "featureServos": "0",
@@ -742,6 +726,7 @@ Values must be in range 1..255
     "uiAutoReturnAfter": 30000,
     "featureKeys": "0",
     "uiEncoderSpeed": 1,
+    "uiReverseEncoder": "0",
     "uiKeyBouncetime": 10,
     "uiKeyFirstRepeat": 500,
     "uiKeyReduceRepeat": 50,
@@ -760,13 +745,13 @@ Values must be in range 1..255
     "uiSpeeddependentPositioning": "1",
     "maxBedTemperature": 120,
     "bedSensorType": 8,
-    "bedSensorPin": "TEMP_1_PIN",
-    "bedHeaterPin": "HEATER_1_PIN",
+    "bedSensorPin": "TEMP_0_PIN",
+    "bedHeaterPin": "HEATER_0_PIN",
     "bedHeatManager": 3,
     "bedUpdateInterval": 5000,
     "bedPidDriveMin": 10,
-    "bedPidDriveMax": 192,
-    "bedPidP": 20,
+    "bedPidDriveMax": 130,
+    "bedPidP": 45,
     "bedPidI": 0,
     "bedPidD": 0,
     "bedPidMax": 255,
@@ -819,7 +804,7 @@ Values must be in range 1..255
     "tempHysteresis": 0,
     "pidControlRange": 20,
     "skipM109Within": 2,
-    "extruderFanCoolTemp": -50,
+    "extruderFanCoolTemp": 50,
     "minTemp": 150,
     "maxTemp": 280,
     "minDefectTemp": -10,
@@ -829,7 +814,7 @@ Values must be in range 1..255
     "forceChecksum": "0",
     "sdExtendedDir": "1",
     "featureFanControl": "1",
-    "fanPin": "ORIG_FAN_PIN",
+    "fanPin": "HEATER_1_PIN",
     "scalePidToMax": 0,
     "zProbePin": "ORIG_Z_MIN_PIN",
     "zProbeBedDistance": 5,
@@ -840,7 +825,7 @@ Values must be in range 1..255
     "zProbeWaitBeforeTest": "0",
     "zProbeSpeed": 2,
     "zProbeXYSpeed": 150,
-    "zProbeHeight": 0,
+    "zProbeHeight": -0.05,
     "zProbeStartScript": "",
     "zProbeFinishedScript": "",
     "featureAutolevel": "1",
@@ -870,19 +855,133 @@ Values must be in range 1..255
     "zMaxPin": "ORIG_Z_MAX_PIN",
     "deltaHomeOnPower": "1",
     "fanBoardPin": -1,
-    "heaterPWMSpeed": 0,
+    "heaterPWMSpeed": 2,
     "featureBabystepping": "0",
     "babystepMultiplicator": 1,
     "pdmForHeater": "0",
     "pdmForCooler": "0",
     "psOn": -1,
     "mixingExtruder": "1",
-    "decouplingTestMaxHoldVariance": 15,
+    "decouplingTestMaxHoldVariance": 25,
     "decouplingTestMinTempRise": 1,
     "featureAxisComp": "0",
     "axisCompTanXY": 0,
     "axisCompTanXZ": 0,
     "axisCompTanYZ": 0,
+    "retractOnPause": 2,
+    "pauseStartCommands": "",
+    "pauseEndCommands": "",
+    "distortionCorrection": "1",
+    "distortionCorrectionPoints": 5,
+    "distortionCorrectionR": 120,
+    "distortionPermanent": "1",
+    "distortionUpdateFrequency": 15,
+    "distortionStartDegrade": 0.5,
+    "distortionEndDegrade": 0.6,
+    "distortionExtrapolateCorners": "0",
+    "sdRunOnStop": "",
+    "sdStopHeaterMotorsOnStop": "1",
+    "featureRetraction": "0",
+    "autoretractEnabled": "0",
+    "retractionLength": 3,
+    "retractionLongLength": 13,
+    "retractionSpeed": 40,
+    "retractionZLift": 0,
+    "retractionUndoExtraLength": 0,
+    "retractionUndoExtraLongLength": 0,
+    "retractionUndoSpeed": 20,
+    "filamentChangeXPos": 0,
+    "filamentChangeYPos": 0,
+    "filamentChangeZAdd": 2,
+    "filamentChangeRehome": 1,
+    "filamentChangeShortRetract": 5,
+    "filamentChangeLongRetract": 50,
+    "fanKickstart": 200,
+    "servo0StartPos": -1,
+    "servo1StartPos": -1,
+    "servo2StartPos": -1,
+    "servo3StartPos": -1,
+    "uiDynamicEncoderSpeed": "1",
+    "uiServoControl": 0,
+    "killIfSensorDefect": "1",
+    "jamSteps": 220,
+    "jamSlowdownSteps": 320,
+    "jamSlowdownTo": 70,
+    "jamErrorSteps": 500,
+    "jamMinSteps": 10,
+    "jamAction": 1,
+    "primaryPort": 0,
+    "numMotorDrivers": 0,
+    "motorDrivers": [
+        {
+            "t": "None",
+            "s": "",
+            "invertEnable": "0",
+            "invertDirection": "0",
+            "stepsPerMM": 100,
+            "speed": 10,
+            "dirPin": -1,
+            "stepPin": -1,
+            "enablePin": -1
+        },
+        {
+            "t": "None",
+            "s": "",
+            "invertEnable": "0",
+            "invertDirection": "0",
+            "stepsPerMM": 100,
+            "speed": 10,
+            "dirPin": -1,
+            "stepPin": -1,
+            "enablePin": -1
+        },
+        {
+            "t": "None",
+            "s": "",
+            "invertEnable": "0",
+            "invertDirection": "0",
+            "stepsPerMM": 100,
+            "speed": 10,
+            "dirPin": -1,
+            "stepPin": -1,
+            "enablePin": -1
+        },
+        {
+            "t": "None",
+            "s": "",
+            "invertEnable": "0",
+            "invertDirection": "0",
+            "stepsPerMM": 100,
+            "speed": 10,
+            "dirPin": -1,
+            "stepPin": -1,
+            "enablePin": -1
+        },
+        {
+            "t": "None",
+            "s": "",
+            "invertEnable": "0",
+            "invertDirection": "0",
+            "stepsPerMM": 100,
+            "speed": 10,
+            "dirPin": -1,
+            "stepPin": -1,
+            "enablePin": -1
+        },
+        {
+            "t": "None",
+            "s": "",
+            "invertEnable": "0",
+            "invertDirection": "0",
+            "stepsPerMM": 100,
+            "speed": 10,
+            "dirPin": -1,
+            "stepPin": -1,
+            "enablePin": -1
+        }
+    ],
+    "manualConfig": "",
+    "maxHalfstepInterval": 1999,
     "hasMAX6675": false,
     "hasMAX31855": false,
     "hasGeneric1": false,
@@ -892,7 +991,8 @@ Values must be in range 1..255
     "hasUser1": false,
     "hasUser2": false,
     "numExtruder": 2,
-    "version": 92
+    "version": 92.3,
+    "primaryPortName": ""
 }
 ========== End configuration string ==========
 

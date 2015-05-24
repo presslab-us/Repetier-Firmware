@@ -49,7 +49,7 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 /** If enabled, steps to move and moved steps are compared. */
 //#define DEBUG_STEPCOUNT
 /** This enables code to make M666 drop an ok, so you get problems with communication. It is to test host robustness. */
-#define DEBUG_COM_ERRORS
+//#define DEBUG_COM_ERRORS
 /** Adds a menu point in quick settings to write debg informations to the host in case of hangs where the ui still works. */
 //#define DEBUG_PRINT
 //#define DEBUG_DELTA_OVERFLOW
@@ -117,13 +117,6 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 #define ANALOG_REF_INT_2_56 _BV(REFS0) | _BV(REFS1)
 #define ANALOG_REF ANALOG_REF_AVCC
 
-// MS1 MS2 Stepper Driver Microstepping mode table
-#define MICROSTEP1 LOW,LOW
-#define MICROSTEP2 HIGH,LOW
-#define MICROSTEP4 LOW,HIGH
-#define MICROSTEP8 HIGH,HIGH
-#define MICROSTEP16 HIGH,HIGH
-
 #define HOME_ORDER_XYZ 1
 #define HOME_ORDER_XZY 2
 #define HOME_ORDER_YXZ 3
@@ -177,6 +170,18 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 
 #include "Configuration.h"
 
+// MS1 MS2 Stepper Driver Microstepping mode table
+#define MICROSTEP1 LOW,LOW
+#define MICROSTEP2 HIGH,LOW
+#define MICROSTEP4 LOW,HIGH
+#define MICROSTEP8 HIGH,HIGH
+#if (MOTHERBOARD == 501)
+#define MICROSTEP16 LOW,LOW
+#else
+#define MICROSTEP16 HIGH,HIGH
+#endif
+#define MICROSTEP32 HIGH,HIGH
+
 #define GCODE_BUFFER_SIZE 1
 
 #ifndef FEATURE_BABYSTEPPING
@@ -189,8 +194,13 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 #define Z_PROBE_REPETITIONS 1
 #endif
 
-#define SPEED_MIN_MILLIS 300
-#define SPEED_MAX_MILLIS 50
+#ifndef MINMAX_HARDWARE_ENDSTOP_Z2
+#define MINMAX_HARDWARE_ENDSTOP_Z2 0
+#define Z2_MINMAX_PIN -1
+#endif
+
+#define SPEED_MIN_MILLIS 400
+#define SPEED_MAX_MILLIS 60
 #define SPEED_MAGNIFICATION 100.0f
 
 #define SOFTWARE_LEVELING (FEATURE_SOFTWARE_LEVELING && (DRIVE_SYSTEM==DELTA))
@@ -363,6 +373,7 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 #define MENU_MODE_DEADTIME 64
 
 #include "HAL.h"
+#include "Drivers.h"
 #include "gcode.h"
 #define MAX_VFAT_ENTRIES (2)
 /** Total size of the buffer used to store the long filenames */
@@ -390,7 +401,7 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 #include "SdFat.h"
 #endif
 
-#if ENABLE_BACKLASH_COMPENSATION && DRIVE_SYSTEM!=CARTESIAN
+#if ENABLE_BACKLASH_COMPENSATION && DRIVE_SYSTEM != CARTESIAN
 #undef ENABLE_BACKLASH_COMPENSATION
 #define ENABLE_BACKLASH_COMPENSATION false
 #endif
@@ -606,6 +617,11 @@ extern int debugWaitLoop;
 #define SQRT(x) ( HAL::integerSqrt(x) )
 #else
 #define SQRT(x) sqrt(x)
+#endif
+
+#include "Events.h"
+#if defined(CUSTOM_EVENTS)
+#include "CustomEvents.h"
 #endif
 
 #endif

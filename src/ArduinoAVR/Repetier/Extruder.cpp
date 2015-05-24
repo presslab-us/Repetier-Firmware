@@ -121,6 +121,7 @@ void Extruder::manageTemperatures()
                     Printer::setAnyTempsensorDefect();
                     reportTempsensorError();
                 }
+                EVENT_HEATER_DEFECT(controller);
             }
         }
         if(Printer::isAnyTempsensorDefect()) continue;
@@ -133,7 +134,7 @@ void Extruder::manageTemperatures()
         }
 
         // Run test if heater and sensor are decoupled
-        bool decoupleTestRequired = (time - act->lastDecoupleTest) > act->decoupleTestPeriod; // time enough for temperature change?
+        bool decoupleTestRequired = act->decoupleTestPeriod > 0 && (time - act->lastDecoupleTest) > act->decoupleTestPeriod; // time enough for temperature change?
         if(decoupleTestRequired && act->isDecoupleFullOrHold() && Printer::isPowerOn()) // Only test when powered
         {
             if(act->isDecoupleFull()) // Phase 1: Heating fully until target range is reached
@@ -151,6 +152,7 @@ void Extruder::manageTemperatures()
                         Com::printF(PSTR("Error:Temp. raised to slow. Rise = "),act->currentTemperatureC - act->lastDecoupleTemp);
                         Com::printF(PSTR(" after "),(int32_t)(time-act->lastDecoupleTest));
                         Com::printFLN(PSTR(" ms"));
+                        EVENT_HEATER_DECOUPLED(controller);
                     }
                 }
                 else
@@ -174,6 +176,7 @@ void Extruder::manageTemperatures()
                         Com::printF(PSTR("Error:Could not hold temperature "),act->lastDecoupleTemp);
                         Com::printF(PSTR(" measured "),act->currentTemperatureC);
                         Com::printFLN(PSTR(" deg. C"));
+                        EVENT_HEATER_DECOUPLED(controller);
                     }
                 }
                 else
@@ -198,7 +201,7 @@ void Extruder::manageTemperatures()
             output = act->pidMax;
             act->startFullDecouple(time);
         }
-        else if(error < -PID_CONTROL_RANGE) // control ramge left upper side!
+        else if(error < -PID_CONTROL_RANGE) // control range left upper side!
             output = 0;
         else // control range handle by heat manager
         {
@@ -351,6 +354,7 @@ void Extruder::markAllUnjammed()
     {
         extruder[i].tempControl.setJammed(false);
         extruder[i].tempControl.setSlowedDown(false);
+        extruder[i].resetJamSteps();
     }
     if(Printer::feedrateMultiply == JAM_SLOWDOWN_TO)
         Commands::changeFeedrateMultiply(100);
@@ -433,27 +437,27 @@ void Extruder::initExtruder()
 #ifdef USE_GENERIC_THERMISTORTABLE_3
     createGenericTable(temptable_generic3,GENERIC_THERM3_MIN_TEMP,GENERIC_THERM3_MAX_TEMP,GENERIC_THERM3_BETA,GENERIC_THERM3_R0,GENERIC_THERM3_T0,GENERIC_THERM3_R1,GENERIC_THERM3_R2);
 #endif
-#if defined(EXT0_STEP_PIN) && EXT0_STEP_PIN>-1
+#if defined(EXT0_STEP_PIN) && EXT0_STEP_PIN > -1 && NUM_EXTRUDER > 0
     SET_OUTPUT(EXT0_DIR_PIN);
     SET_OUTPUT(EXT0_STEP_PIN);
 #endif
-#if defined(EXT1_STEP_PIN) && EXT1_STEP_PIN>-1 && NUM_EXTRUDER>1
+#if defined(EXT1_STEP_PIN) && EXT1_STEP_PIN > -1 && NUM_EXTRUDER > 1
     SET_OUTPUT(EXT1_DIR_PIN);
     SET_OUTPUT(EXT1_STEP_PIN);
 #endif
-#if defined(EXT2_STEP_PIN) && EXT2_STEP_PIN>-1 && NUM_EXTRUDER>2
+#if defined(EXT2_STEP_PIN) && EXT2_STEP_PIN > -1 && NUM_EXTRUDER > 2
     SET_OUTPUT(EXT2_DIR_PIN);
     SET_OUTPUT(EXT2_STEP_PIN);
 #endif
-#if defined(EXT3_STEP_PIN) && EXT3_STEP_PIN>-1 && NUM_EXTRUDER>3
+#if defined(EXT3_STEP_PIN) && EXT3_STEP_PIN > -1 && NUM_EXTRUDER > 3
     SET_OUTPUT(EXT3_DIR_PIN);
     SET_OUTPUT(EXT3_STEP_PIN);
 #endif
-#if defined(EXT4_STEP_PIN) && EXT4_STEP_PIN>-1 && NUM_EXTRUDER>4
+#if defined(EXT4_STEP_PIN) && EXT4_STEP_PIN > -1 && NUM_EXTRUDER > 4
     SET_OUTPUT(EXT4_DIR_PIN);
     SET_OUTPUT(EXT4_STEP_PIN);
 #endif
-#if defined(EXT5_STEP_PIN) && EXT5_STEP_PIN>-1 && NUM_EXTRUDER>5
+#if defined(EXT5_STEP_PIN) && EXT5_STEP_PIN > -1 && NUM_EXTRUDER > 5
     SET_OUTPUT(EXT5_DIR_PIN);
     SET_OUTPUT(EXT5_STEP_PIN);
 #endif
@@ -468,24 +472,24 @@ void Extruder::initExtruder()
         }
         act->tempControl.lastTemperatureUpdate = HAL::timeInMilliseconds();
 #if defined(SUPPORT_MAX6675) || defined(SUPPORT_MAX31855)
-        if(act->tempControl.sensorType==101 || act->tempControl.sensorType==102)
+        if(act->tempControl.sensorType == 101 || act->tempControl.sensorType == 102)
         {
-            WRITE(SCK_PIN,0);
+            WRITE(SCK_PIN, 0);
             SET_OUTPUT(SCK_PIN);
-            WRITE(MOSI_PIN,1);
+            WRITE(MOSI_PIN, 1);
             SET_OUTPUT(MOSI_PIN);
-            WRITE(MISO_PIN,1);
+            WRITE(MISO_PIN, 1);
             SET_INPUT(MISO_PIN);
             SET_OUTPUT(SS);
-            WRITE(SS,HIGH);
-            HAL::digitalWrite(act->tempControl.sensorPin,1);
-            HAL::pinMode(act->tempControl.sensorPin,OUTPUT);
+            WRITE(SS, HIGH);
+            HAL::digitalWrite(act->tempControl.sensorPin, 1);
+            HAL::pinMode(act->tempControl.sensorPin ,OUTPUT);
         }
 #endif
     }
-#if HEATED_BED_HEATER_PIN>-1
+#if HEATED_BED_HEATER_PIN > -1
     SET_OUTPUT(HEATED_BED_HEATER_PIN);
-    WRITE(HEATED_BED_HEATER_PIN,HEATER_PINS_INVERTED);
+    WRITE(HEATED_BED_HEATER_PIN, HEATER_PINS_INVERTED);
     Extruder::initHeatedBed();
 #endif
     HAL::analogStart();
@@ -557,7 +561,8 @@ void Extruder::selectExtruderById(uint8_t extruderId)
     float oldfeedrate = Printer::feedrate;
     Printer::offsetX = -Extruder::current->xOffset * Printer::invAxisStepsPerMM[X_AXIS];
     Printer::offsetY = -Extruder::current->yOffset * Printer::invAxisStepsPerMM[Y_AXIS];
-    Commands::changeFeedrateMultiply(Printer::extrudeMultiply); // needed to adjust extrusionFactor to possibly different diameter
+    Printer::offsetZ = -Extruder::current->zOffset * Printer::invAxisStepsPerMM[Z_AXIS];
+    Commands::changeFlowrateMultiply(Printer::extrudeMultiply); // needed to adjust extrusionFactor to possibly different diameter
     if(Printer::isHomed())
         Printer::moveToReal(cx, cy, cz, IGNORE_COORDINATE, Printer::homingFeedrate[X_AXIS]);
     Printer::feedrate = oldfeedrate;
@@ -1328,6 +1333,7 @@ void TemperatureController::updateCurrentTemperature()
     case 51:
     case 52:
     case 60: // HEATER_USES_AD8495 (Delivers 5mV/degC)
+    case 61: // HEATER_USES_AD8495 (Delivers 5mV/degC) 1.25v offset
     case 100: // AD595
         currentTemperature = (osAnalogInputValues[sensorPin] >> (ANALOG_REDUCE_BITS));
         break;
@@ -1419,7 +1425,18 @@ void TemperatureController::updateCurrentTemperature()
         break;
     }
     case 60: // AD8495 (Delivers 5mV/degC vs the AD595's 10mV)
+#if CPU_ARCH == ARCH_AVR
         currentTemperatureC = ((float)currentTemperature * 1000.0f / (1024 << (2 - ANALOG_REDUCE_BITS)));
+#else
+        currentTemperatureC = ((float)currentTemperature * 660.0f / (1024 << (2 - ANALOG_REDUCE_BITS)));
+#endif
+        break;
+    case 61: // AD8495 1.25V Vref offset (like Adafruit 8495 breakout board)
+#if CPU_ARCH == ARCH_AVR
+        currentTemperatureC = ((float)currentTemperature * 1000.0f / (1024 << (2 - ANALOG_REDUCE_BITS))) - 250.0f;
+#else
+        currentTemperatureC = ((float)currentTemperature * 660.0f / (1024 << (2 - ANALOG_REDUCE_BITS))) - 250.0f;
+#endif
         break;
     case 100: // AD595
         //return (int)((long)raw_temp * 500/(1024<<(2-ANALOG_REDUCE_BITS)));
@@ -1806,7 +1823,7 @@ bool reportTempsensorError()
 int16_t read_max6675(uint8_t ss_pin)
 {
     int16_t max6675_temp = 0;
-    HAL::spiInit(1);
+    HAL::spiInit(2);
     HAL::digitalWrite(ss_pin, 0);  // enable TT_MAX6675
     HAL::delayMicroseconds(1);    // ensure 100ns delay - a bit extra is fine
     max6675_temp = HAL::spiReceive(0);
@@ -1821,7 +1838,7 @@ int16_t read_max31855(uint8_t ss_pin)
 {
     uint32_t data = 0;
     int16_t temperature;
-    HAL::spiInit(1);
+    HAL::spiInit(2);
     HAL::digitalWrite(ss_pin, 0);  // enable TT_MAX31855
     HAL::delayMicroseconds(1);    // ensure 100ns delay - a bit extra is fine
 
@@ -1857,7 +1874,8 @@ void Extruder::retractDistance(float dist)
     float oldFeedrate = Printer::feedrate;
     int32_t distance = static_cast<int32_t>(dist * stepsPerMM / Printer::extrusionFactor);
     int32_t oldEPos = Printer::currentPositionSteps[E_AXIS];
-    PrintLine::moveRelativeDistanceInSteps(0, 0, 0, -distance,distance > 0 ? EEPROM_FLOAT(RETRACTION_SPEED) : EEPROM_FLOAT(RETRACTION_UNDO_SPEED), false, false);
+    float speed = distance > 0 ? EEPROM_FLOAT(RETRACTION_SPEED) : EEPROM_FLOAT(RETRACTION_UNDO_SPEED);
+    PrintLine::moveRelativeDistanceInSteps(0, 0, 0, -distance, RMath::max(speed, 1.f), false, false);
     Printer::currentPositionSteps[E_AXIS] = oldEPos; // restore previous extruder position
     Printer::feedrate = oldFeedrate;
 }
@@ -1917,11 +1935,14 @@ const char ext5_select_cmd[] PROGMEM = EXT5_SELECT_COMMANDS;
 const char ext5_deselect_cmd[] PROGMEM = EXT5_DESELECT_COMMANDS;
 #endif
 
+#if NUM_EXTRUDER == 0
+Extruder extruder[1];
+#else
 Extruder extruder[NUM_EXTRUDER] =
 {
 #if NUM_EXTRUDER > 0
     {
-        0,EXT0_X_OFFSET,EXT0_Y_OFFSET,EXT0_STEPS_PER_MM,EXT0_ENABLE_PIN,EXT0_ENABLE_ON,
+        0,EXT0_X_OFFSET,EXT0_Y_OFFSET,EXT0_Z_OFFSET,EXT0_STEPS_PER_MM,EXT0_ENABLE_PIN,EXT0_ENABLE_ON,
         EXT0_MAX_FEEDRATE,EXT0_MAX_ACCELERATION,EXT0_MAX_START_FEEDRATE,0,EXT0_WATCHPERIOD
         ,EXT0_WAIT_RETRACT_TEMP,EXT0_WAIT_RETRACT_UNITS
 #if USE_ADVANCE
@@ -1948,7 +1969,7 @@ Extruder extruder[NUM_EXTRUDER] =
 #endif
 #if NUM_EXTRUDER > 1
     ,{
-        1,EXT1_X_OFFSET,EXT1_Y_OFFSET,EXT1_STEPS_PER_MM,EXT1_ENABLE_PIN,EXT1_ENABLE_ON,
+        1,EXT1_X_OFFSET,EXT1_Y_OFFSET,EXT1_Z_OFFSET,EXT1_STEPS_PER_MM,EXT1_ENABLE_PIN,EXT1_ENABLE_ON,
         EXT1_MAX_FEEDRATE,EXT1_MAX_ACCELERATION,EXT1_MAX_START_FEEDRATE,0,EXT1_WATCHPERIOD
         ,EXT1_WAIT_RETRACT_TEMP,EXT1_WAIT_RETRACT_UNITS
 #if USE_ADVANCE
@@ -1975,7 +1996,7 @@ Extruder extruder[NUM_EXTRUDER] =
 #endif
 #if NUM_EXTRUDER > 2
     ,{
-        2,EXT2_X_OFFSET,EXT2_Y_OFFSET,EXT2_STEPS_PER_MM,EXT2_ENABLE_PIN,EXT2_ENABLE_ON,
+        2,EXT2_X_OFFSET,EXT2_Y_OFFSET,EXT2_Z_OFFSET,EXT2_STEPS_PER_MM,EXT2_ENABLE_PIN,EXT2_ENABLE_ON,
         EXT2_MAX_FEEDRATE,EXT2_MAX_ACCELERATION,EXT2_MAX_START_FEEDRATE,0,EXT2_WATCHPERIOD
         ,EXT2_WAIT_RETRACT_TEMP,EXT2_WAIT_RETRACT_UNITS
 #if USE_ADVANCE
@@ -2002,7 +2023,7 @@ Extruder extruder[NUM_EXTRUDER] =
 #endif
 #if NUM_EXTRUDER > 3
     ,{
-        3,EXT3_X_OFFSET,EXT3_Y_OFFSET,EXT3_STEPS_PER_MM,EXT3_ENABLE_PIN,EXT3_ENABLE_ON,
+        3,EXT3_X_OFFSET,EXT3_Y_OFFSET,EXT3_Z_OFFSET,EXT3_STEPS_PER_MM,EXT3_ENABLE_PIN,EXT3_ENABLE_ON,
         EXT3_MAX_FEEDRATE,EXT3_MAX_ACCELERATION,EXT3_MAX_START_FEEDRATE,0,EXT3_WATCHPERIOD
         ,EXT3_WAIT_RETRACT_TEMP,EXT3_WAIT_RETRACT_UNITS
 #if USE_ADVANCE
@@ -2029,7 +2050,7 @@ Extruder extruder[NUM_EXTRUDER] =
 #endif
 #if NUM_EXTRUDER > 4
     ,{
-        4,EXT4_X_OFFSET,EXT4_Y_OFFSET,EXT4_STEPS_PER_MM,EXT4_ENABLE_PIN,EXT4_ENABLE_ON,
+        4,EXT4_X_OFFSET,EXT4_Y_OFFSET,EXT4_Z_OFFSET,EXT4_STEPS_PER_MM,EXT4_ENABLE_PIN,EXT4_ENABLE_ON,
         EXT4_MAX_FEEDRATE,EXT4_MAX_ACCELERATION,EXT4_MAX_START_FEEDRATE,0,EXT4_WATCHPERIOD
         ,EXT4_WAIT_RETRACT_TEMP,EXT4_WAIT_RETRACT_UNITS
 #if USE_ADVANCE
@@ -2056,7 +2077,7 @@ Extruder extruder[NUM_EXTRUDER] =
 #endif
 #if NUM_EXTRUDER > 5
     ,{
-        5,EXT5_X_OFFSET,EXT5_Y_OFFSET,EXT5_STEPS_PER_MM,EXT5_ENABLE_PIN,EXT5_ENABLE_ON,
+        5,EXT5_X_OFFSET,EXT5_Y_OFFSET,EXT5_Z_OFFSET,EXT5_STEPS_PER_MM,EXT5_ENABLE_PIN,EXT5_ENABLE_ON,
         EXT5_MAX_FEEDRATE,EXT5_MAX_ACCELERATION,EXT5_MAX_START_FEEDRATE,0,EXT5_WATCHPERIOD
         ,EXT5_WAIT_RETRACT_TEMP,EXT5_WAIT_RETRACT_UNITS
 #if USE_ADVANCE
@@ -2082,6 +2103,7 @@ Extruder extruder[NUM_EXTRUDER] =
     }
 #endif
 };
+#endif // NUM_EXTRUDER
 
 #if HAVE_HEATED_BED
 #define NUM_TEMPERATURE_LOOPS NUM_EXTRUDER+1

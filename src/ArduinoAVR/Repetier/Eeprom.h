@@ -20,7 +20,7 @@
 #define _EEPROM_H
 
 // Id to distinguish version changes
-#define EEPROM_PROTOCOL_VERSION 12
+#define EEPROM_PROTOCOL_VERSION 13
 
 /** Where to start with our datablock in memory. Can be moved if you
 have problems with other modules using the eeprom */
@@ -120,7 +120,7 @@ have problems with other modules using the eeprom */
 #define EPR_RETRACTION_UNDO_EXTRA_LENGTH 1008
 #define EPR_RETRACTION_UNDO_EXTRA_LONG_LENGTH 1012
 #define EPR_RETRACTION_UNDO_SPEED 1016
-#define EPR_AUTORETRACT_ENABLED 1018
+#define EPR_AUTORETRACT_ENABLED 1020
 
 #if EEPROM_MODE != 0
 #define EEPROM_FLOAT(x) HAL::eprGetFloat(EPR_##x)
@@ -162,6 +162,7 @@ have problems with other modules using the eeprom */
 #define EPR_EXTRUDER_COOLER_SPEED       54
 // 55-57 free for byte sized parameter
 #define EPR_EXTRUDER_MIXING_RATIOS  58 // 16*2 byte ratios = 32 byte -> end = 89
+#define EPR_EXTRUDER_Z_OFFSET            90
 #ifndef Z_PROBE_BED_DISTANCE
 #define Z_PROBE_BED_DISTANCE 5.0
 #endif
@@ -170,7 +171,7 @@ class EEPROM
 {
 #if EEPROM_MODE != 0
     static void writeExtruderPrefix(uint pos);
-    static void writeFloat(uint pos,PGM_P text,uint8_t digits=3);
+    static void writeFloat(uint pos,PGM_P text,uint8_t digits = 3);
     static void writeLong(uint pos,PGM_P text);
     static void writeInt(uint pos,PGM_P text);
     static void writeByte(uint pos,PGM_P text);
@@ -182,8 +183,8 @@ public:
 
     static void init();
     static void initBaudrate();
-    static void storeDataIntoEEPROM(uint8_t corrupted=0);
-    static void readDataFromEEPROM();
+    static void storeDataIntoEEPROM(uint8_t corrupted = 0);
+    static void readDataFromEEPROM(bool includeExtruder);
     static void restoreEEPROMSettingsFromConfiguration();
     static void writeSettings();
     static void update(GCode *com);

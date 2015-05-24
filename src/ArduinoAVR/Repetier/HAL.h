@@ -32,6 +32,10 @@
 
 #include <avr/pgmspace.h>
 #include <avr/io.h>
+
+
+#define INLINE __attribute__((always_inline))
+
 #if CPU_ARCH == ARCH_AVR
 #include <avr/io.h>
 #else
@@ -57,7 +61,7 @@ All known arduino boards use 64. This value is needed for the extruder timing. *
 
 #define ANALOG_PRESCALER _BV(ADPS0)|_BV(ADPS1)|_BV(ADPS2)
 
-#if MOTHERBOARD==8 || MOTHERBOARD==88 || MOTHERBOARD==9 || CPU_ARCH!=ARCH_AVR
+#if MOTHERBOARD==8 || MOTHERBOARD==88 || MOTHERBOARD==9 || MOTHERBOARD==92 || CPU_ARCH!=ARCH_AVR
 #define EXTERNALSERIAL
 #endif
 //#define EXTERNALSERIAL  // Force using arduino serial
@@ -140,6 +144,7 @@ typedef uint32_t ticks_t;
 typedef uint32_t millis_t;
 typedef uint8_t flag8_t;
 typedef int8_t fast8_t;
+typedef uint8_t ufast8_t;
 
 #define FAST_INTEGER_SQRT
 
@@ -411,7 +416,7 @@ public:
         // unsigned int v = ((timer>>8)*cur->accel)>>10;
         return res;
 #else
-        return ((timer>>8)*accel)>>10;
+        return ((timer >> 8) * accel) >> 10;
 #endif
     }
 // Multiply two 16 bit values and return 32 bit result
@@ -468,7 +473,7 @@ public:
             :"r18","r19" );
         return res;
 #else
-        return ((int32_t)a*b)>>16;
+        return ((int32_t)a * b) >> 16;
 #endif
     }
     static inline void digitalWrite(uint8_t pin,uint8_t value)
@@ -502,36 +507,36 @@ public:
     }
     static inline void eprSetByte(unsigned int pos,uint8_t value)
     {
-        eeprom_write_byte((unsigned char *)(EEPROM_OFFSET+pos), value);
+        eeprom_write_byte((unsigned char *)(EEPROM_OFFSET + pos), value);
     }
     static inline void eprSetInt16(unsigned int pos,int16_t value)
     {
-        eeprom_write_word((unsigned int*)(EEPROM_OFFSET+pos),value);
+        eeprom_write_word((unsigned int*)(EEPROM_OFFSET + pos),value);
     }
     static inline void eprSetInt32(unsigned int pos,int32_t value)
     {
-        eeprom_write_dword((uint32_t*)(EEPROM_OFFSET+pos),value);
+        eeprom_write_dword((uint32_t*)(EEPROM_OFFSET + pos),value);
     }
     static inline void eprSetFloat(unsigned int pos,float value)
     {
-        eeprom_write_block(&value,(void*)(EEPROM_OFFSET+pos), 4);
+        eeprom_write_block(&value,(void*)(EEPROM_OFFSET + pos), 4);
     }
     static inline uint8_t eprGetByte(unsigned int pos)
     {
-        return eeprom_read_byte ((unsigned char *)(EEPROM_OFFSET+pos));
+        return eeprom_read_byte ((unsigned char *)(EEPROM_OFFSET + pos));
     }
     static inline int16_t eprGetInt16(unsigned int pos)
     {
-        return eeprom_read_word((uint16_t *)(EEPROM_OFFSET+pos));
+        return eeprom_read_word((uint16_t *)(EEPROM_OFFSET + pos));
     }
     static inline int32_t eprGetInt32(unsigned int pos)
     {
-        return eeprom_read_dword((uint32_t*)(EEPROM_OFFSET+pos));
+        return eeprom_read_dword((uint32_t*)(EEPROM_OFFSET + pos));
     }
     static inline float eprGetFloat(unsigned int pos)
     {
         float v;
-        eeprom_read_block(&v,(void *)(EEPROM_OFFSET+pos),4); // newer gcc have eeprom_read_block but not arduino 22
+        eeprom_read_block(&v,(void *)(EEPROM_OFFSET + pos),4); // newer gcc have eeprom_read_block but not arduino 22
         return v;
     }
 
@@ -564,7 +569,7 @@ public:
     }
     static inline bool serialByteAvailable()
     {
-        return RFSERIAL.available()>0;
+        return RFSERIAL.available() > 0;
     }
     static inline uint8_t serialReadByte()
     {

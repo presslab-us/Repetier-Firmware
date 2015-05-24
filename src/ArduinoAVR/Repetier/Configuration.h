@@ -89,21 +89,21 @@
 #define EXT0_MAX_ACCELERATION 3000
 #define EXT0_HEAT_MANAGER 3
 #define EXT0_WATCHPERIOD 1
-#define EXT0_PID_INTEGRAL_DRIVE_MAX 140
+#define EXT0_PID_INTEGRAL_DRIVE_MAX 220
 #define EXT0_PID_INTEGRAL_DRIVE_MIN 40
 #define EXT0_PID_PGAIN_OR_DEAD_TIME 2
 #define EXT0_PID_I 0
 #define EXT0_PID_D 0
-#define EXT0_PID_MAX 220
+#define EXT0_PID_MAX 255
 #define EXT0_ADVANCE_K 0
-#define EXT0_ADVANCE_L 100
+#define EXT0_ADVANCE_L 0
 #define EXT0_ADVANCE_BACKLASH_STEPS 0
 #define EXT0_WAIT_RETRACT_TEMP 150
 #define EXT0_WAIT_RETRACT_UNITS 0
 #define EXT0_SELECT_COMMANDS ""
 #define EXT0_DESELECT_COMMANDS ""
 #define EXT0_EXTRUDER_COOLER_PIN ORIG_FAN_PIN
-#define EXT0_EXTRUDER_COOLER_SPEED 220
+#define EXT0_EXTRUDER_COOLER_SPEED 255
 #define EXT0_DECOUPLE_TEST_PERIOD 18000
 #define EXT0_JAM_PIN -1
 #define EXT0_JAM_PULLUP 0
@@ -124,21 +124,21 @@
 #define EXT1_MAX_ACCELERATION 3000
 #define EXT1_HEAT_MANAGER 3
 #define EXT1_WATCHPERIOD 1
-#define EXT1_PID_INTEGRAL_DRIVE_MAX 140
+#define EXT1_PID_INTEGRAL_DRIVE_MAX 220
 #define EXT1_PID_INTEGRAL_DRIVE_MIN 40
 #define EXT1_PID_PGAIN_OR_DEAD_TIME 2
 #define EXT1_PID_I 0
 #define EXT1_PID_D 0
-#define EXT1_PID_MAX 220
+#define EXT1_PID_MAX 255
 #define EXT1_ADVANCE_K 0
-#define EXT1_ADVANCE_L 100
+#define EXT1_ADVANCE_L 0
 #define EXT1_ADVANCE_BACKLASH_STEPS 0
 #define EXT1_WAIT_RETRACT_TEMP 150
 #define EXT1_WAIT_RETRACT_UNITS 0
 #define EXT1_SELECT_COMMANDS ""
 #define EXT1_DESELECT_COMMANDS ""
 #define EXT1_EXTRUDER_COOLER_PIN -1
-#define EXT1_EXTRUDER_COOLER_SPEED 220
+#define EXT1_EXTRUDER_COOLER_SPEED 255
 #define EXT1_DECOUPLE_TEST_PERIOD 18000
 #define EXT1_JAM_PIN -1
 #define EXT1_JAM_PULLUP 0
@@ -259,13 +259,13 @@
 #define Z_HOME_DIR 1
 #define X_MAX_LENGTH 140
 #define Y_MAX_LENGTH 140
-#define Z_MAX_LENGTH 370
+#define Z_MAX_LENGTH 360
 #define X_MIN_POS -140
 #define Y_MIN_POS -140
 #define Z_MIN_POS 0
 #define DISTORTION_CORRECTION 1
-#define DISTORTION_CORRECTION_POINTS 5
-#define DISTORTION_CORRECTION_R 120
+#define DISTORTION_CORRECTION_POINTS 7
+#define DISTORTION_CORRECTION_R 100
 #define DISTORTION_PERMANENT 1
 #define DISTORTION_UPDATE_FREQUENCY 15
 #define DISTORTION_START_DEGRADE 0.5
@@ -350,7 +350,7 @@
 #define Z2_DIR_PIN    ORIG_E1_DIR_PIN
 #define Z2_ENABLE_PIN E1_ENABLE_PIN
 #define FEATURE_DITTO_PRINTING 0
-#define USE_ADVANCE 1
+#define USE_ADVANCE 0
 #define ENABLE_QUADRATIC_ADVANCE 0
 
 
@@ -400,7 +400,7 @@ WARNING: Servos can draw a considerable amount of current. Make sure your system
 #define Z_PROBE_XY_SPEED 150
 #define Z_PROBE_SWITCHING_DISTANCE 1
 #define Z_PROBE_REPETITIONS 2
-#define Z_PROBE_HEIGHT -0.05
+#define Z_PROBE_HEIGHT 0.0
 #define Z_PROBE_START_SCRIPT ""
 #define Z_PROBE_FINISHED_SCRIPT ""
 #define FEATURE_AUTOLEVEL 1
@@ -498,8 +498,8 @@ Values must be in range 1..255
             "id": 0,
             "heatManager": 3,
             "pidDriveMin": 40,
-            "pidDriveMax": 140,
-            "pidMax": 220,
+            "pidDriveMax": 220,
+            "pidMax": 255,
             "sensorType": 8,
             "sensorPin": "TEMP_2_PIN",
             "heaterPin": "HEATER_2_PIN",
@@ -513,7 +513,7 @@ Values must be in range 1..255
             "pidI": 0,
             "pidD": 0,
             "advanceK": 0,
-            "advanceL": 100,
+            "advanceL": 0,
             "waitRetractTemp": 150,
             "waitRetractUnits": 0,
             "waitRetract": 0,
@@ -543,8 +543,8 @@ Values must be in range 1..255
             "id": 1,
             "heatManager": 3,
             "pidDriveMin": 40,
-            "pidDriveMax": 140,
-            "pidMax": 220,
+            "pidDriveMax": 220,
+            "pidMax": 255,
             "sensorType": 8,
             "sensorPin": "TEMP_2_PIN",
             "heaterPin": "-1",
@@ -558,7 +558,7 @@ Values must be in range 1..255
             "pidI": 0,
             "pidD": 0,
             "advanceK": 0,
-            "advanceL": 100,
+            "advanceL": 0,
             "waitRetractTemp": 150,
             "waitRetractUnits": 0,
             "waitRetract": 0,
@@ -636,7 +636,7 @@ Values must be in range 1..255
     "zMinPos": 0,
     "xLength": 140,
     "yLength": 140,
-    "zLength": 370,
+    "zLength": 360,
     "alwaysCheckEndstops": "1",
     "disableX": "0",
     "disableY": "0",
@@ -682,7 +682,7 @@ Values must be in range 1..255
     "sendWaits": "1",
     "ackWithLineNumber": "1",
     "killMethod": 1,
-    "useAdvance": "1",
+    "useAdvance": "0",
     "useQuadraticAdvance": "0",
     "powerInverting": 0,
     "mirrorX": 0,
@@ -825,7 +825,7 @@ Values must be in range 1..255
     "zProbeWaitBeforeTest": "0",
     "zProbeSpeed": 2,
     "zProbeXYSpeed": 150,
-    "zProbeHeight": -0.05,
+    "zProbeHeight": 0.0,
     "zProbeStartScript": "",
     "zProbeFinishedScript": "",
     "featureAutolevel": "1",
@@ -872,8 +872,8 @@ Values must be in range 1..255
     "pauseStartCommands": "",
     "pauseEndCommands": "",
     "distortionCorrection": "1",
-    "distortionCorrectionPoints": 5,
-    "distortionCorrectionR": 120,
+    "distortionCorrectionPoints": 7,
+    "distortionCorrectionR": 100,
     "distortionPermanent": "1",
     "distortionUpdateFrequency": 15,
     "distortionStartDegrade": 0.5,

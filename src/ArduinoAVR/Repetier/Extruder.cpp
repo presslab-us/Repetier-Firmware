@@ -21,7 +21,7 @@
 
 #include "Repetier.h"
 
-uint8_t manageMonitor = 255; ///< Temp. we want to monitor with our host. 1+NUM_EXTRUDER is heated bed
+uint8_t manageMonitor = 0; ///< Temp. we want to monitor with our host. 1+NUM_EXTRUDER is heated bed
 unsigned int counterPeriodical = 0;
 volatile uint8_t executePeriodical = 0;
 uint8_t counter250ms = 25;
@@ -66,6 +66,7 @@ void Extruder::manageTemperatures()
     HAL::pingWatchdog();
 #endif // FEATURE_WATCHDOG
     uint8_t errorDetected = 0;
+    bool hot = false;
     millis_t time = HAL::timeInMilliseconds(); // compare time for decouple tests
     for(uint8_t controller = 0; controller < NUM_TEMPERATURE_LOOPS; controller++)
     {
@@ -124,6 +125,8 @@ void Extruder::manageTemperatures()
                 EVENT_HEATER_DEFECT(controller);
             }
         }
+        if(act->currentTemperatureC > 50)
+            hot = true;
         if(Printer::isAnyTempsensorDefect()) continue;
         uint8_t on = act->currentTemperatureC >= act->targetTemperatureC ? LOW : HIGH;
         // Make a sound if alarm was set on reaching target temperature
@@ -235,7 +238,8 @@ void Extruder::manageTemperatures()
                         act->lastTemperatureUpdate = time;
                         if(on) act->startFullDecouple(time);
                         else act->stopDecouple();
-                    } else continue;
+                    }
+                    else continue;
                 }
                 else     // Fast Bang-Bang fallback
                 {
@@ -255,19 +259,15 @@ void Extruder::manageTemperatures()
 #endif
     } // for controller
 
-#if EXTRUDER_JAM_CONTROL
-    /*    for(fast8_t i = 0; i < NUM_EXTRUDER; i++) {
-            if(extruder[i].jamStepsSinceLastSignal > JAM_ERROR_STEPS) {
-                if(!extruder[i].isWaitJamStartcount())
-                    extruder[i].tempControl.setJammed(true);
-                else {
-                    extruder[i].jamStepsSinceLastSignal = 0;
-                    extruder[i].setWaitJamStartcount(false);
-                }
-            }
-        }*/
-#endif // EXTRUDER_JAM_CONTROL
-
+#ifdef RED_BLUE_STATUS_LEDS
+    if(Printer::isAnyTempsensorDefect()) {
+        WRITE(BLUE_STATUS_LED,HIGH);
+        WRITE(RED_STATUS_LED,HIGH);
+    } else {
+        WRITE(BLUE_STATUS_LED,!hot);
+        WRITE(RED_STATUS_LED,hot);
+    }
+#endif // RED_BLUE_STATUS_LEDS
 
     if(errorDetected == 0 && extruderTempErrors > 0)
         extruderTempErrors--;
@@ -467,8 +467,8 @@ void Extruder::initExtruder()
         Extruder *act = &extruder[i];
         if(act->enablePin > -1)
         {
-            HAL::pinMode(act->enablePin,OUTPUT);
-            if(!act->enableOn) HAL::digitalWrite(act->enablePin,HIGH);
+            HAL::pinMode(act->enablePin, OUTPUT);
+            HAL::digitalWrite(act->enablePin,!act->enableOn);
         }
         act->tempControl.lastTemperatureUpdate = HAL::timeInMilliseconds();
 #if defined(SUPPORT_MAX6675) || defined(SUPPORT_MAX31855)
@@ -483,7 +483,7 @@ void Extruder::initExtruder()
             SET_OUTPUT(SS);
             WRITE(SS, HIGH);
             HAL::digitalWrite(act->tempControl.sensorPin, 1);
-            HAL::pinMode(act->tempControl.sensorPin ,OUTPUT);
+            HAL::pinMode(act->tempControl.sensorPin, OUTPUT);
         }
 #endif
     }
@@ -549,7 +549,11 @@ void Extruder::selectExtruderById(uint8_t extruderId)
         Printer::maxPrintAccelerationStepsPerSquareSecond[E_AXIS] = Printer::maxAccelerationMMPerSquareSecond[E_AXIS] * Printer::axisStepsPerMM[E_AXIS];
 #if USE_ADVANCE
     Printer::maxExtruderSpeed = (uint8_t)floor(HAL::maxExtruderTimerFrequency() / (Extruder::current->maxFeedrate*Extruder::current->stepsPerMM));
+#if CPU_ARCH == ARCH_ARM
+    if(Printer::maxExtruderSpeed > 40) Printer::maxExtruderSpeed = 40;
+#else
     if(Printer::maxExtruderSpeed > 15) Printer::maxExtruderSpeed = 15;
+#endif
     float maxdist = Extruder::current->maxFeedrate * Extruder::current->maxFeedrate * 0.00013888 / Extruder::current->maxAcceleration;
     maxdist -= Extruder::current->maxStartFeedrate * Extruder::current->maxStartFeedrate * 0.5 / Extruder::current->maxAcceleration;
     float fmax = ((float)HAL::maxExtruderTimerFrequency() / ((float)Printer::maxExtruderSpeed * Printer::axisStepsPerMM[E_AXIS])); // Limit feedrate to interrupt speed
@@ -578,7 +582,7 @@ void Extruder::selectExtruderById(uint8_t extruderId)
 #endif
 }
 
-void Extruder::setTemperatureForExtruder(float temperatureInCelsius,uint8_t extr,bool beep)
+void Extruder::setTemperatureForExtruder(float temperatureInCelsius, uint8_t extr, bool beep, bool wait)
 {
 #if MIXING_EXTRUDER
     extr = 0; // map any virtual extruder number to 0
@@ -595,7 +599,7 @@ void Extruder::setTemperatureForExtruder(float temperatureInCelsius,uint8_t extr
     //if(temperatureInCelsius==tc->targetTemperatureC) return;
     tc->setTargetTemperature(temperatureInCelsius);
     tc->updateTempControlVars();
-    if(beep && temperatureInCelsius > 30)
+    if(beep && temperatureInCelsius > MAX_ROOM_TEMPERATURE)
         tc->setAlarm(true);
     if(temperatureInCelsius >= EXTRUDER_FAN_COOL_TEMP) extruder[extr].coolerPWM = extruder[extr].coolerSpeed;
     Com::printF(Com::tTargetExtr,extr,0);
@@ -624,6 +628,61 @@ void Extruder::setTemperatureForExtruder(float temperatureInCelsius,uint8_t extr
 #endif
     }
 #endif // FEATURE_DITTO_PRINTING
+    if(wait && temperatureInCelsius > MAX_ROOM_TEMPERATURE
+#if defined(SKIP_M109_IF_WITHIN) && SKIP_M109_IF_WITHIN > 0
+            && !(abs(tc->currentTemperatureC - tc->targetTemperatureC) < (SKIP_M109_IF_WITHIN))// Already in range
+#endif
+      )
+    {
+        Extruder *actExtruder = &extruder[extr];
+        UI_STATUS_UPD(UI_TEXT_HEATING_EXTRUDER);
+        EVENT_WAITING_HEATER(actExtruder->id);
+        bool dirRising = actExtruder->tempControl.targetTemperature > actExtruder->tempControl.currentTemperature;
+        millis_t printedTime = HAL::timeInMilliseconds();
+        millis_t waituntil = 0;
+#if RETRACT_DURING_HEATUP
+        uint8_t retracted = 0;
+#endif
+        millis_t currentTime;
+        do
+        {
+            previousMillisCmd = currentTime = HAL::timeInMilliseconds();
+            if( (currentTime - printedTime) > 1000 )   //Print Temp Reading every 1 second while heating up.
+            {
+                Commands::printTemperatures();
+                printedTime = currentTime;
+            }
+            Commands::checkForPeriodicalActions(true);
+            //gcode_read_serial();
+#if RETRACT_DURING_HEATUP
+            if (actExtruder == Extruder::current && actExtruder->waitRetractUnits > 0 && !retracted && dirRising && actExtruder->tempControl.currentTemperatureC > actExtruder->waitRetractTemperature)
+            {
+                PrintLine::moveRelativeDistanceInSteps(0, 0, 0, -actExtruder->waitRetractUnits * Printer::axisStepsPerMM[E_AXIS], actExtruder->maxFeedrate / 4, false, false);
+                retracted = 1;
+            }
+#endif
+            if((waituntil == 0 &&
+                    (dirRising ? actExtruder->tempControl.currentTemperatureC >= actExtruder->tempControl.targetTemperatureC - 1
+                     : actExtruder->tempControl.currentTemperatureC <= actExtruder->tempControl.targetTemperatureC + 1))
+#if defined(TEMP_HYSTERESIS) && TEMP_HYSTERESIS>=1
+                    || (waituntil != 0 && (abs(actExtruder->tempControl.currentTemperatureC - actExtruder->tempControl.targetTemperatureC)) > TEMP_HYSTERESIS)
+#endif
+              )
+            {
+                waituntil = currentTime + 1000UL*(millis_t)actExtruder->watchPeriod; // now wait for temp. to stabalize
+            }
+        }
+        while(waituntil == 0 || (waituntil != 0 && (millis_t)(waituntil - currentTime) < 2000000000UL));
+#if RETRACT_DURING_HEATUP
+        if (retracted && actExtruder == Extruder::current)
+        {
+            PrintLine::moveRelativeDistanceInSteps(0, 0, 0, actExtruder->waitRetractUnits * Printer::axisStepsPerMM[E_AXIS], actExtruder->maxFeedrate / 4, false, false);
+        }
+#endif
+        EVENT_HEATING_FINISHED(actExtruder->id);
+    }
+    UI_CLEAR_STATUS;
+
     bool alloff = true;
     for(uint8_t i = 0; i < NUM_EXTRUDER; i++)
         if(tempController[i]->targetTemperatureC > 15) alloff = false;
@@ -1167,19 +1226,19 @@ void Extruder::disableCurrentExtruderMotor()
 #endif
 #else // MIXING_EXTRUDER
     if(Extruder::current->enablePin > -1)
-        digitalWrite(Extruder::current->enablePin,!Extruder::current->enableOn);
+        HAL::digitalWrite(Extruder::current->enablePin,!Extruder::current->enableOn);
 #if FEATURE_DITTO_PRINTING
     if(Extruder::dittoMode)
     {
         if(extruder[1].enablePin > -1)
-            digitalWrite(extruder[1].enablePin,!extruder[1].enableOn);
+            HAL::digitalWrite(extruder[1].enablePin,!extruder[1].enableOn);
 #if NUM_EXTRUDER > 2
         if(Extruder::dittoMode > 1 && extruder[2].enablePin > -1)
-            digitalWrite(extruder[2].enablePin,!extruder[2].enableOn);
+            HAL::digitalWrite(extruder[2].enablePin,!extruder[2].enableOn);
 #endif
 #if NUM_EXTRUDER > 3
         if(Extruder::dittoMode > 2 && extruder[3].enablePin > -1)
-            digitalWrite(extruder[3].enablePin,!extruder[3].enableOn);
+            HAL::digitalWrite(extruder[3].enablePin,!extruder[3].enableOn);
 #endif
     }
 #endif
@@ -1187,10 +1246,10 @@ void Extruder::disableCurrentExtruderMotor()
 }
 void Extruder::disableAllExtruderMotors()
 {
-    for(byte i = 0; i < NUM_EXTRUDER; i++)
+    for(fast8_t i = 0; i < NUM_EXTRUDER; i++)
     {
         if(extruder[i].enablePin > -1)
-            digitalWrite(extruder[i].enablePin, !extruder[i].enableOn);
+            HAL::digitalWrite(extruder[i].enablePin, !extruder[i].enableOn);
     }
 }
 #define NUMTEMPS_1 28
@@ -1440,7 +1499,11 @@ void TemperatureController::updateCurrentTemperature()
         break;
     case 100: // AD595
         //return (int)((long)raw_temp * 500/(1024<<(2-ANALOG_REDUCE_BITS)));
+#if CPU_ARCH == ARCH_AVR
         currentTemperatureC = ((float)currentTemperature * 500.0f / (1024 << (2 - ANALOG_REDUCE_BITS)));
+#else
+        currentTemperatureC = ((float)currentTemperature * 330.0f / (1024 << (2 - ANALOG_REDUCE_BITS)));
+#endif
         break;
 #ifdef SUPPORT_MAX6675
     case 101: // MAX6675
@@ -1795,11 +1858,7 @@ disabled, the function is not called.
 */
 void writeMonitor()
 {
-    Com::printF(Com::tMTEMPColon,(long)HAL::timeInMilliseconds());
-    TemperatureController *act = tempController[manageMonitor];
-    Com::printF(Com::tSpace,act->currentTemperatureC);
-    Com::printF(Com::tSpace,act->targetTemperatureC, 0);
-    Com::printFLN(Com::tSpace,pwm_pos[act->pwmIndex]);
+    Commands::printTemperatures(false);
 }
 
 bool reportTempsensorError()

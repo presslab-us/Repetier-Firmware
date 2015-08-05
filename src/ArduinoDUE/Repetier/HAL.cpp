@@ -69,17 +69,18 @@ void HAL::setupTimer() {
   pmc_set_writeprotect(false);
 
   // set 3 bits for interrupt group priority, 1 bits for sub-priority
-  NVIC_SetPriorityGrouping(4);
+  //NVIC_SetPriorityGrouping(4);
 
 #if USE_ADVANCE
   // Timer for extruder control
   pmc_enable_periph_clk(EXTRUDER_TIMER_IRQ);  // enable power to timer
-  NVIC_SetPriority((IRQn_Type)EXTRUDER_TIMER_IRQ, NVIC_EncodePriority(4, 4, 1));
+  //NVIC_SetPriority((IRQn_Type)EXTRUDER_TIMER_IRQ, NVIC_EncodePriority(4, 4, 1));
+  NVIC_SetPriority((IRQn_Type)EXTRUDER_TIMER_IRQ, 6);
 
   // count up to value in RC register using given clock
-  TC_Configure(EXTRUDER_TIMER, EXTRUDER_TIMER_CHANNEL, TC_CMR_WAVSEL_UP_RC | TC_CMR_WAVE | TC_CMR_TCCLKS_TIMER_CLOCK4);
+  TC_Configure(EXTRUDER_TIMER, EXTRUDER_TIMER_CHANNEL, TC_CMR_WAVSEL_UP_RC | TC_CMR_WAVE | TC_CMR_TCCLKS_TIMER_CLOCK3);
 
-  TC_SetRC(EXTRUDER_TIMER, EXTRUDER_TIMER_CHANNEL, (F_CPU_TRUE / TIMER0_PRESCALE) / EXTRUDER_CLOCK_FREQ); // set frequency
+  TC_SetRC(EXTRUDER_TIMER, EXTRUDER_TIMER_CHANNEL, (F_CPU_TRUE / 32) / EXTRUDER_CLOCK_FREQ); // set frequency 43 for 60000Hz
   TC_Start(EXTRUDER_TIMER, EXTRUDER_TIMER_CHANNEL);           // start timer running
 
   // enable RC compare interrupt
@@ -92,7 +93,8 @@ void HAL::setupTimer() {
 #endif
   // Regular interrupts for heater control etc
   pmc_enable_periph_clk(PWM_TIMER_IRQ);
-  NVIC_SetPriority((IRQn_Type)PWM_TIMER_IRQ, NVIC_EncodePriority(4, 6, 0));
+  //NVIC_SetPriority((IRQn_Type)PWM_TIMER_IRQ, NVIC_EncodePriority(4, 6, 0));
+  NVIC_SetPriority((IRQn_Type)PWM_TIMER_IRQ, 10);
 
   TC_FindMckDivisor(PWM_CLOCK_FREQ, F_CPU_TRUE, &tc_count, &tc_clock, F_CPU_TRUE);
   TC_Configure(PWM_TIMER, PWM_TIMER_CHANNEL, TC_CMR_WAVSEL_UP_RC | TC_CMR_WAVE | tc_clock);
@@ -106,7 +108,8 @@ void HAL::setupTimer() {
 
   // Timer for stepper motor control
   pmc_enable_periph_clk(TIMER1_TIMER_IRQ );
-  NVIC_SetPriority((IRQn_Type)TIMER1_TIMER_IRQ, NVIC_EncodePriority(4, 4, 0));
+  //NVIC_SetPriority((IRQn_Type)TIMER1_TIMER_IRQ, NVIC_EncodePriority(4, 7, 1)); // highest priority - no surprises here wanted
+  NVIC_SetPriority((IRQn_Type)TIMER1_TIMER_IRQ,1); // highest priority - no surprises here wanted
 
   TC_Configure(TIMER1_TIMER, TIMER1_TIMER_CHANNEL, TC_CMR_WAVSEL_UP_RC |
                TC_CMR_WAVE | TC_CMR_TCCLKS_TIMER_CLOCK1);
@@ -137,7 +140,8 @@ void HAL::setupTimer() {
   WRITE(SERVO3_PIN, LOW);
 #endif
   pmc_enable_periph_clk(SERVO_TIMER_IRQ );
-  NVIC_SetPriority((IRQn_Type)SERVO_TIMER_IRQ, NVIC_EncodePriority(4, 5, 0));
+  //NVIC_SetPriority((IRQn_Type)SERVO_TIMER_IRQ, NVIC_EncodePriority(4, 5, 0));
+  NVIC_SetPriority((IRQn_Type)SERVO_TIMER_IRQ,4);
 
   TC_Configure(SERVO_TIMER, SERVO_TIMER_CHANNEL, TC_CMR_WAVSEL_UP_RC |
                TC_CMR_WAVE | TC_CMR_TCCLKS_TIMER_CLOCK1);
@@ -308,11 +312,15 @@ void HAL::spiBegin()
                   SPI_MR_MODFDIS | SPI_MR_PS);
     SPI_Enable(SPI0);
 #if MOTHERBOARD == 500 || MOTHERBOARD == 501
-    SET_OUTPUT(DAC_SYNC);
+    SET_OUTPUT(DAC0_SYNC);
+#if NUM_EXTRUDER > 1
+    SET_OUTPUT(DAC1_SYNC);
+    WRITE(DAC1_SYNC, HIGH);
+#endif
     SET_OUTPUT(SPI_EEPROM1_CS);
     SET_OUTPUT(SPI_EEPROM2_CS);
     SET_OUTPUT(SPI_FLASH_CS);
-    WRITE(DAC_SYNC, HIGH);
+    WRITE(DAC0_SYNC, HIGH);
     WRITE(SPI_EEPROM1_CS, HIGH );
     WRITE(SPI_EEPROM2_CS, HIGH );
     WRITE(SPI_FLASH_CS, HIGH );
@@ -803,17 +811,20 @@ void SERVO_COMPA_VECTOR ()
 #endif
 
 TcChannel *stepperChannel = (TIMER1_TIMER->TC_CHANNEL + TIMER1_TIMER_CHANNEL);
+#define STEPPERTIMER_EXIT_TICKS 105 // at least 2,5us pause between stepper calls
 /** \brief Sets the timer 1 compare value to delay ticks.
 */
 INLINE void setTimer(unsigned long delay)
 {
   // convert old AVR timer delay value for SAM timers
   uint32_t timer_count = (delay * TIMER1_PRESCALE);
-  if (timer_count < 210)
+  if (timer_count < 210) // max. 200 khz timer frequency
     timer_count = 210;
-  stepperChannel->TC_RC = timer_count;
-  if ( stepperChannel->TC_CV > timer_count) {
-    stepperChannel->TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG ;
+  if ( stepperChannel->TC_CV + STEPPERTIMER_EXIT_TICKS > timer_count) {
+     stepperChannel->TC_RC = stepperChannel->TC_CV + STEPPERTIMER_EXIT_TICKS; // should end after exiting timer interrupt
+    //stepperChannel->TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG ;
+  } else {
+     stepperChannel->TC_RC = timer_count;
   }
 }
 
@@ -823,7 +834,8 @@ void TIMER1_COMPA_VECTOR ()
 {
   // apparently have to read status register
   stepperChannel->TC_SR;
-  InterruptProtectedBlock noInt;
+  stepperChannel->TC_RC = 1000000;
+  //InterruptProtectedBlock noInt;
   if (PrintLine::hasLines())
   {
     setTimer(PrintLine::bresenhamStep());
@@ -851,6 +863,7 @@ void TIMER1_COMPA_VECTOR ()
 #endif
     }
     else waitRelax--;
+    
     setTimer(10000);
   }
 }
@@ -1141,6 +1154,13 @@ moving, until the total wanted movement is achieved. This will
 be done with the maximum allowable speed for the extruder.
 */
 #if USE_ADVANCE
+TcChannel *extruderChannel = (EXTRUDER_TIMER->TC_CHANNEL + EXTRUDER_TIMER_CHANNEL);
+#define SLOW_EXTRUDER_TICKS  (F_CPU_TRUE / 32 / 1000) // 250us on direction change
+#define NORMAL_EXTRUDER_TICKS  (F_CPU_TRUE / 32 / EXTRUDER_CLOCK_FREQ) // 500us on direction change
+#ifndef ADVANCE_DIR_FILTER_STEPS
+#define ADVANCE_DIR_FILTER_STEPS 2
+#endif
+
 static int extruderLastDirection = 0;
 void HAL::resetExtruderDirection() {
   extruderLastDirection = 0;
@@ -1150,37 +1170,40 @@ void EXTRUDER_TIMER_VECTOR ()
 {
   InterruptProtectedBlock noInt;
   // apparently have to read status register
-  TC_GetStatus(EXTRUDER_TIMER, EXTRUDER_TIMER_CHANNEL);
-
+  //TC_GetStatus(EXTRUDER_TIMER, EXTRUDER_TIMER_CHANNEL);
+  extruderChannel->TC_SR; // faster replacement for above line!
+  
   if (!Printer::isAdvanceActivated()) {
     return; // currently no need
   }
-  // get current extruder timer count value
-  uint32_t timer = EXTRUDER_TIMER->TC_CHANNEL[EXTRUDER_TIMER_CHANNEL].TC_RC;
 
   if (!Printer::isAdvanceActivated()) return; // currently no need
   if (Printer::extruderStepsNeeded > 0 && extruderLastDirection != 1)
   {
-    Extruder::setDirection(true);
-    extruderLastDirection = 1;
-    timer += 40; // Add some more wait time to prevent blocking
+    if(Printer::extruderStepsNeeded >= ADVANCE_DIR_FILTER_STEPS) {
+      Extruder::setDirection(true);
+      extruderLastDirection = 1;
+      extruderChannel->TC_RC = SLOW_EXTRUDER_TICKS;
+    } else 
+      extruderChannel->TC_RC = Printer::maxExtruderSpeed;
   }
-
   else if (Printer::extruderStepsNeeded < 0 && extruderLastDirection != -1)
   {
-    Extruder::setDirection(false);
-    extruderLastDirection = -1;
-    timer += 40; // Add some more wait time to prevent blocking
-  }
+    if(-Printer::extruderStepsNeeded >= ADVANCE_DIR_FILTER_STEPS) {
+      Extruder::setDirection(false);
+      extruderLastDirection = -1;
+      extruderChannel->TC_RC = SLOW_EXTRUDER_TICKS;
+   } else 
+      extruderChannel->TC_RC = Printer::maxExtruderSpeed;
+   }
   else if (Printer::extruderStepsNeeded != 0)
   {
     Extruder::step();
     Printer::extruderStepsNeeded -= extruderLastDirection;
+    extruderChannel->TC_RC = Printer::maxExtruderSpeed;
     Printer::insertStepperHighDelay();
     Extruder::unstep();
   }
-
-  TC_SetRC(EXTRUDER_TIMER, EXTRUDER_TIMER_CHANNEL, timer);
 }
 #endif
 

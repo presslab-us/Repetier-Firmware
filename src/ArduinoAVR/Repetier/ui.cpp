@@ -437,9 +437,17 @@ void lcdWriteByte(uint8_t c,uint8_t rs)
     WRITE(UI_DISPLAY_D5_PIN, c & 0x20);
     WRITE(UI_DISPLAY_D6_PIN, c & 0x40);
     WRITE(UI_DISPLAY_D7_PIN, c & 0x80);
+#if FEATURE_CONTROLLER == CONTROLLER_RADDS
+    HAL::delayMicroseconds(10);
+#else
     HAL::delayMicroseconds(2);
+#endif
     WRITE(UI_DISPLAY_ENABLE_PIN, HIGH);   // enable pulse must be >450ns
+#if FEATURE_CONTROLLER == CONTROLLER_RADDS
+    HAL::delayMicroseconds(10);
+#else
     HAL::delayMicroseconds(2);
+#endif
     WRITE(UI_DISPLAY_ENABLE_PIN, LOW);
 
     WRITE(UI_DISPLAY_D4_PIN, c & 0x01);
@@ -562,8 +570,8 @@ void initializeLCD()
 #if UI_DISPLAY_TYPE < DISPLAY_ARDUINO_LIB
 void UIDisplay::printRow(uint8_t r,char *txt,char *txt2,uint8_t changeAtCol)
 {
-    changeAtCol = RMath::min(UI_COLS,changeAtCol);
-    uint8_t col=0;
+    changeAtCol = RMath::min(UI_COLS, changeAtCol);
+    uint8_t col = 0;
 // Set row
     if(r >= UI_ROWS) return;
 #if UI_DISPLAY_TYPE == DISPLAY_I2C
@@ -686,7 +694,7 @@ u8g_uint_t u8_tx = 0, u8_ty = 0;
 
 void u8PrintChar(char c)
 {
-    switch(c)
+    switch((uint8_t)c)
     {
     case 0x7E: // right arrow
         u8g_SetFont(&u8g, u8g_font_6x12_67_75);
@@ -780,7 +788,13 @@ void initializeLCD()
     u8g_Init8Bit(&u8g,&u8g_dev_ks0108_128x64,UI_DISPLAY_D0_PIN,UI_DISPLAY_D1_PIN,UI_DISPLAY_D2_PIN,UI_DISPLAY_D3_PIN,UI_DISPLAY_D4_PIN,UI_DISPLAY_D5_PIN,UI_DISPLAY_D6_PIN,UI_DISPLAY_D7_PIN,UI_DISPLAY_ENABLE_PIN,UI_DISPLAY_CS1,UI_DISPLAY_CS2,
                  UI_DISPLAY_DI,UI_DISPLAY_RW_PIN,UI_DISPLAY_RESET_PIN);
 #endif
+#ifdef U8GLIB_ST7565_NHD_C2832_HW_SPI
+    u8g_InitHWSPI(&u8g,&u8g_dev_st7565_nhd_c12864_hw_spi,UI_DISPLAY_RS_PIN,UI_DISPLAY_D5_PIN,U8G_PIN_NONE);
+#endif
     u8g_Begin(&u8g);
+#ifdef UI_ROTATE_180
+    u8g_SetRot180(&u8g);
+#endif
     u8g_FirstPage(&u8g);
     do
     {
@@ -943,7 +957,7 @@ void UIDisplay::createChar(uint8_t location,const uint8_t PROGMEM charmap[])
 {
     location &= 0x7; // we only have 8 locations 0-7
     lcdCommand(LCD_SETCGRAMADDR | (location << 3));
-    for (int i=0; i<8; i++)
+    for (int i = 0; i < 8; i++)
     {
         lcdPutChar(pgm_read_byte(&(charmap[i])));
     }
@@ -954,7 +968,7 @@ void  UIDisplay::waitForKey()
     int nextAction = 0;
 
     lastButtonAction = 0;
-    while(lastButtonAction==nextAction)
+    while(lastButtonAction == nextAction)
     {
         uiCheckSlowKeys(nextAction);
     }
@@ -1994,7 +2008,7 @@ void UIDisplay::refreshPage()
             if(transition == 0)
             {
 #if UI_DISPLAY_TYPE == DISPLAY_U8G
-                if(menuLevel==0 && menuPos[0] == 0 )
+                if(menuLevel == 0 && menuPos[0] == 0 )
                 {
                     u8g_SetFont(&u8g,UI_FONT_SMALL);
                     uint8_t py = 8;
@@ -2937,7 +2951,7 @@ int UIDisplay::executeAction(int action, bool allowMoves)
         case UI_ACTION_POWER:
 #if PS_ON_PIN >= 0 // avoid compiler errors when the power supply pin is disabled
             Commands::waitUntilEndOfAllMoves();
-            SET_OUTPUT(PS_ON_PIN); //GND
+            //SET_OUTPUT(PS_ON_PIN); //GND
             TOGGLE(PS_ON_PIN);
 #endif
             break;

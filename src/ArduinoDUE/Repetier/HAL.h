@@ -113,7 +113,7 @@ typedef char prog_char;
 #define TWI_ID  				ID_TWI1
 
 
-#define EXTRUDER_CLOCK_FREQ     244    // don't know what this should be
+#define EXTRUDER_CLOCK_FREQ     60000 // extruder stepper interrupt frequency
 #define PWM_CLOCK_FREQ          3906
 #define TIMER1_CLOCK_FREQ       244
 #define TIMER1_PRESCALE         2
@@ -159,6 +159,7 @@ typedef char prog_char;
 #define	SET_OUTPUT(pin) PIO_Configure(g_APinDescription[pin].pPort, PIO_OUTPUT_1, \
                                       g_APinDescription[pin].ulPin, g_APinDescription[pin].ulPinConfiguration)
 #define TOGGLE(pin) WRITE(pin,!READ(pin))
+#define TOGGLE_VAR(pin) HAL::digitalWrite(pin,!HAL::digitalRead(pin))
 #define LOW         0
 #define HIGH        1
 
@@ -169,20 +170,20 @@ typedef char prog_char;
 class InterruptProtectedBlock {
   public:
     INLINE void protect() {
-      __set_BASEPRI(NVIC_EncodePriority(4, 3, 0));
+      __disable_irq();
     }
 
     INLINE void unprotect() {
-      __set_BASEPRI(0);
+      __enable_irq();
     }
 
     INLINE InterruptProtectedBlock(bool later = false) {
       if (!later)
-        __set_BASEPRI(NVIC_EncodePriority(4, 3, 0));
+      __disable_irq();
     }
 
     INLINE ~InterruptProtectedBlock() {
-      __set_BASEPRI(0);
+      __enable_irq();
     }
 };
 #else
@@ -330,7 +331,7 @@ class HAL
       TC_Configure(DELAY_TIMER, DELAY_TIMER_CHANNEL, TC_CMR_WAVSEL_UP |
                    TC_CMR_WAVE | DELAY_TIMER_CLOCK);
       TC_Start(DELAY_TIMER, DELAY_TIMER_CHANNEL);
-#if EEPROM_AVAILABLE && EEPROM_MODE != 0
+#if EEPROM_AVAILABLE && EEPROM_MODE != EEPROM_NONE
       // Copy eeprom to ram for faster access
       int i, n = EEPROM_BYTES;
       for (i = 0; i < EEPROM_BYTES; i += 4) {
@@ -816,7 +817,7 @@ class HAL
     };
 
     inline static float maxExtruderTimerFrequency() {
-      return (float)F_CPU / TIMER0_PRESCALE;
+      return (float)F_CPU_TRUE/32;
     }
 #if FEATURE_SERVO
     static unsigned int servoTimings[4];

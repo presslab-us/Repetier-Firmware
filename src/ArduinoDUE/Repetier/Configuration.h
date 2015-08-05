@@ -53,12 +53,13 @@ setpe per mm and heater manager settings in extruder 0 are used! */
 #define MIXING_EXTRUDER 0
 
 //// The following define selects which electronics board you have. Please choose the one that matches your setup
-// Arduino Due                = 401 // This is only experimental
-// Arduino Due with RADDS     = 402
-// Arduino Due with RAMPS-FD  = 403
+// Arduino Due with RADDS       = 402
+// Arduino Due with RAMPS-FD    = 403
 // Arduino Due with RAMPS-FD V2 = 404
-// Alligator Board rev1 = 500
-// Alligator Board rev2 = 501
+// Felix Printers for arm       = 405
+// DAM&DICE DUE                 = 406
+// Alligator Board rev1         = 500
+// Alligator Board rev2         = 501
 
 #define MOTHERBOARD 402
 
@@ -806,8 +807,8 @@ on this endstop.
 //#define MOTOR_CURRENT {35713,35713,35713,35713,35713} // Values 0-65535 (3D Master 35713 = ~1A)
 #define MOTOR_CURRENT_PERCENT {55,55,55,55,55}
 #elif (MOTHERBOARD==500) || (MOTHERBOARD==501) // Alligator boards
-//#define MOTOR_CURRENT {130,130,130,110,110} // expired method
-#define MOTOR_CURRENT_PERCENT {51,51,51,44,44}
+//#define MOTOR_CURRENT {130,130,130,110,110,110,110} // expired method
+#define MOTOR_CURRENT_PERCENT {51,51,51,44,44,44,44}
 #endif
 
 /** \brief Number of segments to generate for delta conversions per second of move
@@ -938,8 +939,26 @@ Mega. Used only for nonlinear systems like delta or tuga. */
 #define HOMING_FEEDRATE_Y 80
 #define HOMING_FEEDRATE_Z 3
 
-/** Set order of axis homing. Use HOME_ORDER_XYZ and replace XYZ with your order. */
+/** Set order of axis homing. Use HOME_ORDER_XYZ and replace XYZ with your order. 
+ * If you measure Z with your extruder tip you need a hot extruder to get right measurement. In this
+ * case set HOME_ORDER_ZXYTZ and also define ZHOME_HEAT_HEIGHT and ZHOME_MIN_TEMPERATURE. It will do
+ * first a z home to get some reference, then raise to ZHOME_HEAT_HEIGHT do xy homing and then after
+ * heating to minimum ZHOME_MIN_TEMPERATURE will z home again for correct height.   
+ * */
 #define HOMING_ORDER HOME_ORDER_ZXY
+// Used for homing order HOME_ORDER_ZXYTZ
+#define ZHOME_MIN_TEMPERATURE 0
+// needs to heat all extruders (1) or only current extruder (0)
+#define ZHOME_HEAT_ALL 1 
+// Z-height for heating extruder during homing
+#define ZHOME_HEAT_HEIGHT 20
+// If your bed might bend while probing, because your sensor is the extruder tip
+// you can define a predefined x,y position so beding is always the same and
+// can be compensated. Set coordinate to 999999 to ignore positions and just
+// use the position you are at.
+#define ZHOME_X_POS IGNORE_COORDINATE
+#define ZHOME_Y_POS IGNORE_COORDINATE
+
 /* If you have a backlash in both z-directions, you can use this. For most printer, the bed will be pushed down by it's
 own weight, so this is nearly never needed. */
 #define ENABLE_BACKLASH_COMPENSATION 0
@@ -1356,6 +1375,10 @@ The following settings override uiconfig.h!
 15 or CONTROLLER_SANGUINOLOLU_PANELOLU2 = Sanguinololu + Panelolu2
 17 or CONTROLLER_MIREGLI 17
 18 or CONTROLLER_GATE_3NOVATICA Gate Controller from 3Novatica
+19 or CONTROLLER_SPARKLCD Sparkcube LCD on RADDS
+20 or CONTROLLER_BAM_DICE_DUE  DAM&DICE Due LCD Display
+21 or CONTROLLER_VIKI2 Panucatt Viki2 graphic lcd 
+405 or CONTROLLER_FELIX_DUE Felix LCD für due based board
 */
 #define FEATURE_CONTROLLER CONTROLLER_RADDS
 

@@ -44,7 +44,7 @@
 //  Microstepping mod eof your RAMO board
 #define MICROSTEP_MODES { 16,16,16,16,16 } // [1,2,4,8,16]
 // Motor Current setting (Only functional when motor driver current ref pins are connected to a digital trimpot on supported boards)
-#define MOTOR_CURRENT_PERCENT { 200,200,200,160,160 }
+#define MOTOR_CURRENT_PERCENT { 78,78,78,50,50 }
 
 // ################ END MANUAL SETTINGS ##########################
 
@@ -60,9 +60,9 @@
 #define MIXING_EXTRUDER 1
 
 #define DRIVE_SYSTEM 3
-#define XAXIS_STEPS_PER_MM 81
-#define YAXIS_STEPS_PER_MM 81
-#define ZAXIS_STEPS_PER_MM 81
+#define XAXIS_STEPS_PER_MM 80
+#define YAXIS_STEPS_PER_MM 80
+#define ZAXIS_STEPS_PER_MM 80
 #define EXTRUDER_FAN_COOL_TEMP 50
 #define PDM_FOR_EXTRUDER 0
 #define PDM_FOR_COOLER 0
@@ -264,12 +264,12 @@
 #define Y_MIN_POS -140
 #define Z_MIN_POS 0
 #define DISTORTION_CORRECTION 1
-#define DISTORTION_CORRECTION_POINTS 7
-#define DISTORTION_CORRECTION_R 100
+#define DISTORTION_CORRECTION_POINTS 5
+#define DISTORTION_CORRECTION_R 80
 #define DISTORTION_PERMANENT 1
 #define DISTORTION_UPDATE_FREQUENCY 15
-#define DISTORTION_START_DEGRADE 0.5
-#define DISTORTION_END_HEIGHT 0.6
+#define DISTORTION_START_DEGRADE 0.4
+#define DISTORTION_END_HEIGHT 0.8
 #define DISTORTION_EXTRAPOLATE_CORNERS 0
 
 // ##########################################################################################
@@ -283,7 +283,7 @@
 #define DELTA_SEGMENTS_PER_SECOND_MOVE 120 // Less accurate setting for other moves
 
 // Delta settings
-#define DELTA_DIAGONAL_ROD 290 // mm
+#define DELTA_DIAGONAL_ROD 288 // mm
 #define DELTA_ALPHA_A 210
 #define DELTA_ALPHA_B 330
 #define DELTA_ALPHA_C 90
@@ -296,7 +296,7 @@
 #define END_EFFECTOR_HORIZONTAL_OFFSET 0
 #define CARRIAGE_HORIZONTAL_OFFSET 0
 #define DELTA_MAX_RADIUS 140
-#define ROD_RADIUS 128.5
+#define ROD_RADIUS 128.7
 #define PRINTER_RADIUS 128.5
 #define DELTA_HOME_ON_POWER 1
 #define STEP_COUNTER
@@ -650,8 +650,8 @@ Values must be in range 1..255
     "zEndstopBack": 5,
     "deltaSegmentsPerSecondPrint": 260,
     "deltaSegmentsPerSecondTravel": 120,
-    "deltaDiagonalRod": 290,
-    "deltaHorizontalRadius": 128.5,
+    "deltaDiagonalRod": 288,
+    "deltaHorizontalRadius": 128.7,
     "deltaAlphaA": 210,
     "deltaAlphaB": 330,
     "deltaAlphaC": 90,
@@ -872,12 +872,12 @@ Values must be in range 1..255
     "pauseStartCommands": "",
     "pauseEndCommands": "",
     "distortionCorrection": "1",
-    "distortionCorrectionPoints": 7,
-    "distortionCorrectionR": 100,
+    "distortionCorrectionPoints": 5,
+    "distortionCorrectionR": 80,
     "distortionPermanent": "1",
     "distortionUpdateFrequency": 15,
-    "distortionStartDegrade": 0.5,
-    "distortionEndDegrade": 0.6,
+    "distortionStartDegrade": 0.4,
+    "distortionEndDegrade": 0.8,
     "distortionExtrapolateCorners": "0",
     "sdRunOnStop": "",
     "sdStopHeaterMotorsOnStop": "1",

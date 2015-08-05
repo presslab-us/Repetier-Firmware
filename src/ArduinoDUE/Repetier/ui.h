@@ -390,11 +390,18 @@ extern const int8_t encoder_table[16] PROGMEM ;
 #define UI_MENU(name,items,itemsCnt) const UIMenuEntry * const name ## _entries[] PROGMEM = items;const UIMenu name PROGMEM = {2,0,itemsCnt,name ## _entries};
 #define UI_MENU_FILESELECT(name,items,itemsCnt) const UIMenuEntry * const name ## _entries[] PROGMEM = items;const UIMenu name PROGMEM = {1,0,itemsCnt,name ## _entries};
 
-#if FEATURE_CONTROLLER == CONTROLLER_SMARTRAMPS || FEATURE_CONTROLLER == CONTROLLER_GADGETS3D_SHIELD || FEATURE_CONTROLLER == CONTROLLER_REPRAPDISCOUNT_GLCD
+#if FEATURE_CONTROLLER == CONTROLLER_SMARTRAMPS || FEATURE_CONTROLLER == CONTROLLER_GADGETS3D_SHIELD || FEATURE_CONTROLLER == CONTROLLER_BAM_DICE_DUE || (FEATURE_CONTROLLER == CONTROLLER_REPRAPDISCOUNT_GLCD && MOTHERBOARD != CONTROLLER_FELIX_DUE)
 #undef SDCARDDETECT
 #define SDCARDDETECT 49
 #undef SDCARDDETECTINVERTED
 #define SDCARDDETECTINVERTED 0
+#undef SDSUPPORT
+#define SDSUPPORT 1
+#endif
+
+#if FEATURE_CONTROLLER == CONTROLLER_VIKI2
+#undef SDCARDDETECT
+#define SDCARDDETECT -1
 #undef SDSUPPORT
 #define SDSUPPORT 1
 #endif
@@ -407,6 +414,7 @@ extern const int8_t encoder_table[16] PROGMEM ;
 #undef SDSUPPORT
 #define SDSUPPORT 1
 #endif
+
 
 // Maximum size of a row - if row is larger, text gets scrolled
 #if UI_DISPLAY_TYPE == DISPLAY_GAMEDUINO2
@@ -505,7 +513,7 @@ inline void uiCheckSlowEncoder() {}
 void uiCheckSlowKeys(int &action) {}
 #endif // UI_MAIN
 #endif // NO_CONTROLLER
-#if (FEATURE_CONTROLLER == CONTROLLER_SMARTRAMPS) || (FEATURE_CONTROLLER == CONTROLLER_GADGETS3D_SHIELD) || (FEATURE_CONTROLLER == CONTROLLER_REPRAPDISCOUNT_GLCD)
+#if (FEATURE_CONTROLLER == CONTROLLER_SMARTRAMPS) || (FEATURE_CONTROLLER == CONTROLLER_GADGETS3D_SHIELD) || (FEATURE_CONTROLLER == CONTROLLER_REPRAPDISCOUNT_GLCD)  || (FEATURE_CONTROLLER == CONTROLLER_BAM_DICE_DUE)
 #define UI_HAS_KEYS 1
 #define UI_HAS_BACK_KEY 0
 #if FEATURE_CONTROLLER == CONTROLLER_REPRAPDISCOUNT_GLCD
@@ -513,7 +521,6 @@ void uiCheckSlowKeys(int &action) {}
 #define U8GLIB_ST7920
 #define UI_LCD_WIDTH 128
 #define UI_LCD_HEIGHT 64
-
 //select font size
 #define UI_FONT_6X10 //default font
 #ifdef UI_FONT_6X10
@@ -530,14 +537,17 @@ void uiCheckSlowKeys(int &action) {}
 #define UI_COLS (UI_LCD_WIDTH/UI_FONT_WIDTH)
 #define UI_ROWS (UI_LCD_HEIGHT/UI_FONT_HEIGHT)
 #define UI_DISPLAY_CHARSET 3
-#else
+#else // 40x4 char display
 #define UI_DISPLAY_TYPE DISPLAY_4BIT
 #define UI_DISPLAY_CHARSET 1
 #define UI_COLS 20
 #define UI_ROWS 4
 #endif
+
 #define BEEPER_TYPE 1
+
 #if FEATURE_CONTROLLER == CONTROLLER_GADGETS3D_SHIELD // Gadgets3d shield
+
 #define BEEPER_PIN             33
 #define UI_DISPLAY_RS_PIN      16
 #define UI_DISPLAY_RW_PIN      -1
@@ -554,8 +564,11 @@ void uiCheckSlowKeys(int &action) {}
 #define UI_ENCODER_B           37
 #define UI_ENCODER_CLICK       31
 #define UI_RESET_PIN           41
+
 #else  // Smartcontroller
+
 #if MOTHERBOARD == 701 // Megatronics v2.0
+
 #define UI_DISPLAY_RS_PIN 14
 #define UI_DISPLAY_RW_PIN -1
 #define UI_DISPLAY_ENABLE_PIN 15
@@ -567,8 +580,10 @@ void uiCheckSlowKeys(int &action) {}
 #define UI_ENCODER_B 59
 #define UI_ENCODER_CLICK 43
 #define UI_RESET_PIN 66 // was 41 //AE3 was here and added this line 1/25/2014  (Note pin 41 is Y- endstop!)
-#define UI_INVERT_MENU_DIRECTION true
+#define UI_INVERT_MENU_DIRECTION 1
+
 #elif MOTHERBOARD == 80 // Rumba has different pins as RAMPS!
+
 #define BEEPER_PIN             44
 #define UI_DISPLAY_RS_PIN      19
 #define UI_DISPLAY_RW_PIN      -1
@@ -585,7 +600,9 @@ void uiCheckSlowKeys(int &action) {}
 #define UI_ENCODER_B           11
 #define UI_ENCODER_CLICK       43
 #define UI_RESET_PIN           46
+
 #elif MOTHERBOARD == 301 // Rambo has own pins layout
+
 #define BEEPER_PIN             79
 #define UI_DISPLAY_RS_PIN      70
 #define UI_DISPLAY_RW_PIN      -1
@@ -608,7 +625,9 @@ void uiCheckSlowKeys(int &action) {}
 #define SDCARDDETECTINVERTED   0
 #undef SDSUPPORT
 #define SDSUPPORT              1
+
 #elif MOTHERBOARD == 501 // Alligator has own pins layout
+
 #define BEEPER_PIN             64
 #define UI_DISPLAY_RS_PIN      18
 #define UI_DISPLAY_ENABLE_PIN  15
@@ -624,6 +643,18 @@ void uiCheckSlowKeys(int &action) {}
 #ifndef UI_VOLTAGE_LEVEL
 #define UI_VOLTAGE_LEVEL 1 // Set 1=5 o 0=3.3 V
 #endif
+
+#elif MOTHERBOARD == CONTROLLER_FELIX_DUE
+
+#define BEEPER_PIN             -1
+#define UI_DISPLAY_RS_PIN      42
+#define UI_DISPLAY_ENABLE_PIN  44
+#define UI_DISPLAY_D4_PIN      43
+#define UI_ENCODER_A           52
+#define UI_ENCODER_B           50
+#define UI_ENCODER_CLICK       48
+#define UI_RESET_PIN           -1
+
 #else  // RAMPS
 #define BEEPER_PIN             37
 #define UI_DISPLAY_RS_PIN      16
@@ -642,9 +673,13 @@ void uiCheckSlowKeys(int &action) {}
 #define UI_ENCODER_CLICK       35
 #define UI_RESET_PIN           41
 #endif
-#endif
+#endif // smartcontroller
 #define UI_DELAYPERCHAR 50
+#if FEATURE_CONTROLLER == CONTROLLER_BAM_DICE_DUE
+#define UI_ENCODER_SPEED 2
+#endif
 #define UI_INVERT_MENU_DIRECTION 0
+
 #if UI_MAIN
 void uiInitKeys() {
   UI_KEYS_INIT_CLICKENCODER_LOW(UI_ENCODER_A,UI_ENCODER_B); // click encoder on pins 47 and 45. Phase is connected with gnd for signals.
@@ -654,7 +689,11 @@ void uiInitKeys() {
 #endif
 }
 void uiCheckKeys(int &action) {
+#if FEATURE_CONTROLLER == CONTROLLER_BAM_DICE_DUE
+ UI_KEYS_CLICKENCODER_LOW_REV(UI_ENCODER_B,UI_ENCODER_A); // click encoder on pins 47 and 45. Phase is connected with gnd for signals.
+#else
  UI_KEYS_CLICKENCODER_LOW_REV(UI_ENCODER_A,UI_ENCODER_B); // click encoder on pins 47 and 45. Phase is connected with gnd for signals.
+#endif
  UI_KEYS_BUTTON_LOW(UI_ENCODER_CLICK,UI_ACTION_OK); // push button, connects gnd to pin
 #if UI_RESET_PIN > -1
  UI_KEYS_BUTTON_LOW(UI_RESET_PIN,UI_ACTION_RESET);
@@ -1410,6 +1449,183 @@ void uiCheckSlowKeys(int &action) {}
 #endif
 #endif // CONTROLLER_GATE_3NOVATICA
 
+#if FEATURE_CONTROLLER == CONTROLLER_SPARKLCD
+#if MOTHERBOARD != 402
+#error This config only works with RADDS motherboard!
+#endif
+#define UI_DISPLAY_CHARSET 3
+#define UI_DISPLAY_TYPE 5
+#define U8GLIB_ST7920 // Currently only this display from u8g lib is included.
+#define UI_LCD_WIDTH 128
+#define UI_LCD_HEIGHT 64
+
+//select font size
+#define UI_FONT_6X10 //default font
+#ifdef UI_FONT_6X10
+#define UI_FONT_WIDTH 6
+#define UI_FONT_HEIGHT 10
+#define UI_FONT_SMALL_HEIGHT 7
+#define UI_FONT_DEFAULT repetier_6x10
+#define UI_FONT_SMALL repetier_5x7
+#define UI_FONT_SMALL_WIDTH 5 //smaller font for status display
+#define UI_ANIMATION false  // Animations are too slow
+#endif
+
+//calculate rows and cols available with current font
+#define UI_COLS (UI_LCD_WIDTH/UI_FONT_WIDTH)
+#define UI_ROWS (UI_LCD_HEIGHT/UI_FONT_HEIGHT)
+#define UI_DISPLAY_RS_PIN		25		// PINK.1, 88, D_RS
+#define UI_DISPLAY_RW_PIN		-1
+#define UI_DISPLAY_ENABLE_PIN	        27		// PINK.3, 86, D_E
+#define UI_DISPLAY_D0_PIN		-1		// PINF.5, 92, D_D4
+#define UI_DISPLAY_D1_PIN		-1		// PINK.2, 87, D_D5
+#define UI_DISPLAY_D2_PIN		-1		// PINL.5, 40, D_D6
+#define UI_DISPLAY_D3_PIN		-1		// PINK.4, 85, D_D7
+#define UI_DISPLAY_D4_PIN		29		// PINF.5, 92, D_D4
+#define UI_DISPLAY_D5_PIN		-1		// PINK.2, 87, D_D5
+#define UI_DISPLAY_D6_PIN		-1		// PINL.5, 40, D_D6
+#define UI_DISPLAY_D7_PIN		-1		// PINK.4, 85, D_D7
+#define UI_DELAYPERCHAR		   50
+#define UI_HAS_KEYS 1
+#define UI_HAS_BACK_KEY 0
+#define UI_INVERT_MENU_DIRECTION 0
+#define UI_HAS_I2C_ENCODER 0
+#define UI_ENCODER_SPEED 1
+#define UI_ENCODER_A 35
+#define UI_ENCODER_B 33
+#define UI_ENCODER_CLICK 37
+
+#ifdef UI_MAIN
+void uiInitKeys() {
+  UI_KEYS_INIT_CLICKENCODER_LOW(UI_ENCODER_A,UI_ENCODER_B); // click encoder on pins 47 and 45. Phase is connected with gnd for signals.
+  UI_KEYS_INIT_BUTTON_LOW(UI_ENCODER_CLICK); // push button, connects gnd to pin;
+}
+void uiCheckKeys(int &action) {
+ UI_KEYS_CLICKENCODER_LOW(UI_ENCODER_A,UI_ENCODER_B); // click encoder on pins 47 and 45. Phase is connected with gnd for signals.
+ UI_KEYS_BUTTON_LOW(UI_ENCODER_CLICK,UI_ACTION_OK); // push button, connects gnd to pin
+}
+inline void uiCheckSlowEncoder() {}
+void uiCheckSlowKeys(int &action) {}
+#endif
+
+#endif // CONTROLLER_sparkLCD
+
+#if FEATURE_CONTROLLER == CONTROLLER_VIKI2
+#define UI_HAS_KEYS 1
+#define UI_HAS_BACK_KEY 0
+#define UI_DISPLAY_TYPE DISPLAY_U8G
+//#define U8GLIB_ST7920
+#define U8GLIB_ST7565_NHD_C2832_HW_SPI
+#define UI_LCD_WIDTH 128
+#define UI_LCD_HEIGHT 64
+//select font size
+#define UI_FONT_6X10 //default font
+#define UI_FONT_WIDTH 6
+#define UI_FONT_HEIGHT 10
+#define UI_FONT_SMALL_HEIGHT 7
+#define UI_FONT_DEFAULT repetier_6x10
+#define UI_FONT_SMALL repetier_5x7
+#define UI_FONT_SMALL_WIDTH 5 //smaller font for status display
+#define UI_ANIMATION 0  // Animations are too slow
+
+//calculate rows and cols available with current font
+#define UI_COLS (UI_LCD_WIDTH/UI_FONT_WIDTH)
+#define UI_ROWS (UI_LCD_HEIGHT/UI_FONT_HEIGHT)
+#define UI_DISPLAY_CHARSET 3
+#define UI_INVERT_MENU_DIRECTION 0
+#define UI_ENCODER_SPEED 2
+#define SDCARDDETECT        -1
+#define UI_DISPLAY_RW_PIN -1
+#define UI_ROTATE_180
+
+#define BEEPER_TYPE 1
+
+// SCK Pin:  UI_DISPLAY_D4_PIN
+// Mosi Pin: UI_DISPLAY_ENABLE_PIN
+// CD Pin:   UI_DISPLAY_RS_PIN
+
+#if MOTHERBOARD == 34 // Azteeg X3
+
+#define SDCARDDETECT 49 // sd card detect as shown on drawing
+#define BEEPER_PIN    33
+#define UI_DISPLAY_D5_PIN 31   // Display A0
+#define UI_DISPLAY_RS_PIN 32    // Display CS
+#define UI_ENCODER_A 22
+#define UI_ENCODER_B 7
+#define UI_ENCODER_CLICK 12
+#define UI_RESET_PIN -1
+#define RED_BLUE_STATUS_LEDS
+#define RED_STATUS_LED 64
+#define BLUE_STATUS_LED 63
+
+#elif MOTHERBOARD == 35 // Azteeg X3 Pro
+
+#undef SDCARDDETECT
+#define SDCARDDETECT      49 // sd card detect as shown on drawing
+#define BEEPER_PIN        47 // 33 is the on board beeper
+#define UI_DISPLAY_D5_PIN 44 // Display A0
+#define UI_DISPLAY_RS_PIN 45 // Display CS
+#define UI_ENCODER_A      22
+#define UI_ENCODER_B       7
+#define UI_ENCODER_CLICK  39
+#define UI_RESET_PIN      -1
+#define RED_BLUE_STATUS_LEDS
+#define RED_STATUS_LED    32
+#define BLUE_STATUS_LED   35
+
+#elif MOTHERBOARD == 301 // RAMBO
+
+#define SDCARDDETECT 72 // sd card detect as shown on drawing
+#define BEEPER_PIN         33
+#define UI_DISPLAY_D5_PIN 70   // Display A0
+#define UI_DISPLAY_RS_PIN 71    // Display CS
+#define UI_ENCODER_A 85
+#define UI_ENCODER_B 84
+#define UI_ENCODER_CLICK 83
+#define UI_RESET_PIN -1
+#define RED_BLUE_STATUS_LEDS
+#define RED_STATUS_LED 22
+#define BLUE_STATUS_LED 32
+
+#elif MOTHERBOARD == 9 || MOTHERBOARD == 92 // Printboard
+
+#define SDCARDDETECT 72 // sd card detect as shown on drawing
+#define SDSS          45
+#define BEEPER_PIN         32
+#define UI_DISPLAY_D5_PIN 42   // Display A0
+#define UI_DISPLAY_RS_PIN 43    // Display CS
+#define UI_ENCODER_A 26
+#define UI_ENCODER_B 27
+#define UI_ENCODER_CLICK 47
+#define UI_RESET_PIN -1
+#define RED_BLUE_STATUS_LEDS
+#define RED_STATUS_LED 12
+#define BLUE_STATUS_LED 10
+
+
+#else
+#error No predefined Viki 2 mapping for your board available
+#endif
+
+#if UI_MAIN
+void uiInitKeys() {
+  UI_KEYS_INIT_CLICKENCODER_LOW(UI_ENCODER_A,UI_ENCODER_B); // click encoder on pins 47 and 45. Phase is connected with gnd for signals.
+  UI_KEYS_INIT_BUTTON_LOW(UI_ENCODER_CLICK); // push button, connects gnd to pin
+#if UI_RESET_PIN > -1
+  UI_KEYS_INIT_BUTTON_LOW(UI_RESET_PIN); // Kill pin
+#endif
+}
+void uiCheckKeys(int &action) {
+ UI_KEYS_CLICKENCODER_LOW_REV(UI_ENCODER_B,UI_ENCODER_A);
+ UI_KEYS_BUTTON_LOW(UI_ENCODER_CLICK,UI_ACTION_OK);
+#if UI_RESET_PIN > -1
+ UI_KEYS_BUTTON_LOW(UI_RESET_PIN,UI_ACTION_RESET);
+#endif
+}
+inline void uiCheckSlowEncoder() {}
+void uiCheckSlowKeys(int &action) {}
+#endif
+#endif // Controller VIKI 2
 
 #if FEATURE_CONTROLLER != NO_CONTROLLER
 #if UI_ROWS==4

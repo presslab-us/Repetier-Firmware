@@ -300,32 +300,41 @@ public:
         {
             if(isXNegativeMove() && Endstops::xMin())
                 setXMoveFinished();
-            if(isXPositiveMove() && Endstops::xMax())
+            else if(isXPositiveMove() && Endstops::xMax())
                 setXMoveFinished();
             if(isYNegativeMove() && Endstops::yMin())
                 setYMoveFinished();
-            if(isYPositiveMove() && Endstops::yMax())
+            else if(isYPositiveMove() && Endstops::yMax())
                 setYMoveFinished();
+#if FEATURE_Z_PROBE
+            if(Printer::isZProbingActive() && isZNegativeMove() && Endstops::zProbe())
+            {
+                setZMoveFinished();
+                Printer::stepsRemainingAtZHit = stepsRemaining;
+            }
+            else
+#endif
+                if(isZNegativeMove() && Endstops::zMin())
+                {
+                    setZMoveFinished();
+                }
+                else if(isZPositiveMove() && Endstops::zMax())
+                {
+#if MAX_HARDWARE_ENDSTOP_Z
+                    Printer::stepsRemainingAtZHit = stepsRemaining;
+#endif
+                    setZMoveFinished();
+                }
         }
 #if FEATURE_Z_PROBE
-        if(Printer::isZProbingActive() && isZNegativeMove() && Endstops::zProbe())
+        else if(Printer::isZProbingActive() && isZNegativeMove() && Endstops::zProbe())
         {
             setZMoveFinished();
             Printer::stepsRemainingAtZHit = stepsRemaining;
         }
-        else
 #endif
-            // Test Z-Axis every step if necessary, otherwise it could easyly ruin your printer!
-            if(isZNegativeMove() && Endstops::zMin())
-                setZMoveFinished();
-        if(isZPositiveMove() && Endstops::zMax())
-        {
-#if MAX_HARDWARE_ENDSTOP_Z
-            Printer::stepsRemainingAtZHit = stepsRemaining;
-#endif
-            setZMoveFinished();
-        }
     }
+
     inline void setXMoveFinished()
     {
 #if DRIVE_SYSTEM == CARTESIAN || NONLINEAR_SYSTEM
@@ -420,15 +429,15 @@ public:
     }
     inline bool isMoveOfAxis(uint8_t axis)
     {
-        return (dir & (XSTEP<<axis));
+        return (dir & (XSTEP << axis));
     }
     inline void setMoveOfAxis(uint8_t axis)
     {
-        dir |= XSTEP<<axis;
+        dir |= XSTEP << axis;
     }
     inline void setPositiveDirectionForAxis(uint8_t axis)
     {
-        dir |= X_DIRPOS<<axis;
+        dir |= X_DIRPOS << axis;
     }
     inline static void resetPathPlanner()
     {
@@ -460,7 +469,7 @@ public:
         long h = HAL::mulu16xu16to32(v, advanceL);
         int tred = ((advanceTarget + h) >> 16);
         HAL::forbidInterrupts();
-        Printer::extruderStepsNeeded += tred-Printer::advanceStepsSet;
+        Printer::extruderStepsNeeded += tred - Printer::advanceStepsSet;
         if(tred > 0 && Printer::advanceStepsSet <= 0)
             Printer::extruderStepsNeeded += Extruder::current->advanceBacklash;
         else if(tred < 0 && Printer::advanceStepsSet >= 0)
@@ -652,17 +661,18 @@ public:
         HAL::forbidInterrupts();
         --linesCount;
         if(!linesCount)
-            Printer::setMenuMode(MENU_MODE_PRINTING,false);
+            Printer::setMenuMode(MENU_MODE_PRINTING, false);
     }
     static inline void pushLine()
     {
         linesWritePos++;
         if(linesWritePos >= PRINTLINE_CACHE_SIZE) linesWritePos = 0;
-        Printer::setMenuMode(MENU_MODE_PRINTING,true);
+        Printer::setMenuMode(MENU_MODE_PRINTING, true);
         InterruptProtectedBlock noInts;
         linesCount++;
     }
-    static uint8_t getLinesCount() {
+    static uint8_t getLinesCount()
+    {
         InterruptProtectedBlock noInts;
         return linesCount;
     }
@@ -673,8 +683,8 @@ public:
     static inline void computeMaxJunctionSpeed(PrintLine *previous,PrintLine *current);
     static int32_t bresenhamStep();
     static void waitForXFreeLines(uint8_t b=1, bool allowMoves = false);
-    static inline void forwardPlanner(uint8_t p);
-    static inline void backwardPlanner(uint8_t p,uint8_t last);
+    static inline void forwardPlanner(ufast8_t p);
+    static inline void backwardPlanner(ufast8_t p,ufast8_t last);
     static void updateTrapezoids();
     static uint8_t insertWaitMovesIfNeeded(uint8_t pathOptimize, uint8_t waitExtraLines);
     static void queueCartesianMove(uint8_t check_endstops,uint8_t pathOptimize);
@@ -683,11 +693,11 @@ public:
 #if ARC_SUPPORT
     static void arc(float *position, float *target, float *offset, float radius, uint8_t isclockwise);
 #endif
-    static inline void previousPlannerIndex(uint8_t &p)
+    static inline void previousPlannerIndex(ufast8_t &p)
     {
-        p = (p ? p-1 : PRINTLINE_CACHE_SIZE-1);
+        p = (p ? p - 1 : PRINTLINE_CACHE_SIZE - 1);
     }
-    static inline void nextPlannerIndex(uint8_t& p)
+    static inline void nextPlannerIndex(ufast8_t& p)
     {
         p = (p == PRINTLINE_CACHE_SIZE - 1 ? 0 : p + 1);
     }

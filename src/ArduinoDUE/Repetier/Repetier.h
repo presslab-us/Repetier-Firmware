@@ -24,7 +24,7 @@
 
 #include <math.h>
 
-#define REPETIER_VERSION "0.92.3"
+#define REPETIER_VERSION "0.92.4"
 
 // ##########################################################################################
 // ##                                  Debug configuration                                 ##
@@ -150,6 +150,7 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 #define CONTROLLER_SPARKLCD 19
 #define CONTROLLER_BAM_DICE_DUE 20
 #define CONTROLLER_VIKI2 21
+#define CONTROLLER_LCD_MP_PHARAOH_DUE 22
 #define CONTROLLER_FELIX_DUE 405
 
 //direction flags
@@ -276,6 +277,18 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 #define SHARED_COOLER 0
 #endif
 
+#ifndef START_STEP_WITH_HIGH
+#define START_STEP_WITH_HIGH 1
+#endif
+
+#if NUM_EXTRUDER > 0 && EXT0_TEMPSENSOR_TYPE == 101
+#define SUPPORT_MAX6675
+#endif
+
+#if NUM_EXTRUDER > 0 && EXT0_TEMPSENSOR_TYPE == 102
+#define SUPPORT_MAX31855
+#endif
+
 // Test for shared coolers between extruders and mainboard
 #if EXT0_EXTRUDER_COOLER_PIN > -1 && EXT0_EXTRUDER_COOLER_PIN == FAN_BOARD_PIN
  #define SHARED_COOLER_BOARD_EXT 1
@@ -306,7 +319,7 @@ usage or for seraching for memory induced errors. Switch it off for production, 
 #define EXT0_ANALOG_CHANNEL
 #endif
 
-#if NUM_EXTRUDER>1 && EXT1_TEMPSENSOR_TYPE<101
+#if NUM_EXTRUDER>1 && EXT1_TEMPSENSOR_TYPE < 101
 #define EXT1_ANALOG_INPUTS 1
 #define EXT1_SENSOR_INDEX EXT0_ANALOG_INPUTS
 #define EXT1_ANALOG_CHANNEL ACCOMMA0 EXT1_TEMPSENSOR_PIN

@@ -167,15 +167,29 @@ private:
 class Endstops {
     static flag8_t lastState;
     static flag8_t lastRead;
+    static flag8_t accumulator;
 #ifdef EXTENDED_ENDSTOPS
     static flag8_t lastState2;
     static flag8_t lastRead2;
+    static flag8_t accumulator2;
 #endif
 public:
     static void update();
     static void report();
     static INLINE bool anyXYZMax() {
         return (lastState & (ENDSTOP_X_MAX_ID|ENDSTOP_Z_MAX_ID|ENDSTOP_Z_MAX_ID)) != 0;
+    }
+    static INLINE void resetAccumulator() {
+        accumulator = 0;
+#ifdef EXTENDED_ENDSTOPS
+        accumulator2 = 0;
+#endif
+    }
+    static INLINE void fillFromAccumulator() {
+        lastState = accumulator;
+#ifdef EXTENDED_ENDSTOPS
+        lastState = accumulator2;
+#endif
     }
     static INLINE bool xMin() {
 #if (X_MIN_PIN > -1) && MIN_HARDWARE_ENDSTOP_X
@@ -240,7 +254,7 @@ class Printer
 public:
 #if USE_ADVANCE
     static volatile int extruderStepsNeeded; ///< This many extruder steps are still needed, <0 = reverse steps needed.
-    static uint8_t maxExtruderSpeed;            ///< Timer delay for end extruder speed
+    static ufast8_t maxExtruderSpeed;            ///< Timer delay for end extruder speed
     //static uint8_t extruderAccelerateDelay;     ///< delay between 2 speec increases
     static int advanceStepsSet;
 #if ENABLE_QUADRATIC_ADVANCE
@@ -260,7 +274,7 @@ public:
     static uint8_t relativeExtruderCoordinateMode;  ///< Determines Absolute or Relative E Codes while in Absolute Coordinates mode. E is always relative in Relative Coordinates mode.
 
     static uint8_t unitIsInches;
-
+    static float zBedOffset;
     static uint8_t debugLevel;
     static uint8_t flag0,flag1; // 1 = stepper disabled, 2 = use external extruder interrupt, 4 = temp Sensor defect, 8 = homed
     static uint8_t flag2;
@@ -309,7 +323,7 @@ public:
 #if FEATURE_AUTOLEVEL
     static float autolevelTransformation[9]; ///< Transformation matrix
 #endif
-    static int8_t zBabystepsMissing;
+    static int16_t zBabystepsMissing;
     static float minimumSpeed;               ///< lowest allowed speed to keep integration error small
     static float minimumZSpeed;              ///< lowest allowed speed to keep integration error small
     static int32_t xMaxSteps;                   ///< For software endstops, limit of move in positive direction.
@@ -343,9 +357,6 @@ public:
     static float backlashY;
     static float backlashZ;
     static uint8_t backlashDir;
-#endif
-#ifdef DEBUG_STEPCOUNT
-    static long totalStepsRemaining;
 #endif
     static float memoryX;
     static float memoryY;
@@ -383,50 +394,50 @@ public:
 
     static INLINE bool isMenuMode(uint8_t mode)
     {
-        return (menuMode & mode)==mode;
+        return (menuMode & mode) == mode;
     }
 
     static INLINE bool debugEcho()
     {
-        return ((debugLevel & 1)!=0);
+        return ((debugLevel & 1) != 0);
     }
 
     static INLINE bool debugInfo()
     {
-        return ((debugLevel & 2)!=0);
+        return ((debugLevel & 2) != 0);
     }
 
     static INLINE bool debugErrors()
     {
-        return ((debugLevel & 4)!=0);
+        return ((debugLevel & 4) != 0);
     }
 
     static INLINE bool debugDryrun()
     {
-        return ((debugLevel & 8)!=0);
+        return ((debugLevel & 8) != 0);
     }
 
     static INLINE bool debugCommunication()
     {
-        return ((debugLevel & 16)!=0);
+        return ((debugLevel & 16) != 0);
     }
 
     static INLINE bool debugNoMoves()
     {
-        return ((debugLevel & 32)!=0);
+        return ((debugLevel & 32) != 0);
     }
 
-    static INLINE bool debugFlag(unsigned long flags)
+    static INLINE bool debugFlag(uint8_t flags)
     {
         return (debugLevel & flags);
     }
 
-    static INLINE void debugSet(unsigned long flags)
+    static INLINE void debugSet(uint8_t flags)
     {
         debugLevel |= flags;
     }
 
-    static INLINE void debugReset(unsigned long flags)
+    static INLINE void debugReset(uint8_t flags)
     {
         debugLevel &= ~flags;
     }
@@ -786,33 +797,33 @@ public:
 #if (GANTRY)
         if(motorX <= -2)
         {
-            WRITE(X_STEP_PIN,HIGH);
+            WRITE(X_STEP_PIN,START_STEP_WITH_HIGH);
 #if FEATURE_TWO_XSTEPPER
-            WRITE(X2_STEP_PIN,HIGH);
+            WRITE(X2_STEP_PIN,START_STEP_WITH_HIGH);
 #endif
             motorX += 2;
         }
         else if(motorX >= 2)
         {
-            WRITE(X_STEP_PIN,HIGH);
+            WRITE(X_STEP_PIN,START_STEP_WITH_HIGH);
 #if FEATURE_TWO_XSTEPPER
-            WRITE(X2_STEP_PIN,HIGH);
+            WRITE(X2_STEP_PIN,START_STEP_WITH_HIGH);
 #endif
             motorX -= 2;
         }
         if(motorYorZ <= -2)
         {
-            WRITE(Y_STEP_PIN,HIGH);
+            WRITE(Y_STEP_PIN,START_STEP_WITH_HIGH);
 #if FEATURE_TWO_YSTEPPER
-            WRITE(Y2_STEP_PIN,HIGH);
+            WRITE(Y2_STEP_PIN,START_STEP_WITH_HIGH);
 #endif
             motorYorZ += 2;
         }
         else if(motorYorZ >= 2)
         {
-            WRITE(Y_STEP_PIN,HIGH);
+            WRITE(Y_STEP_PIN,START_STEP_WITH_HIGH);
 #if FEATURE_TWO_YSTEPPER
-            WRITE(Y2_STEP_PIN,HIGH);
+            WRITE(Y2_STEP_PIN,START_STEP_WITH_HIGH);
 #endif
             motorYorZ -= 2;
         }
@@ -823,53 +834,74 @@ public:
 #if (GANTRY)
         if(motorX <= -2)
         {
-            WRITE(X_STEP_PIN,HIGH);
+            WRITE(X_STEP_PIN,START_STEP_WITH_HIGH);
 #if FEATURE_TWO_XSTEPPER
-            WRITE(X2_STEP_PIN,HIGH);
+            WRITE(X2_STEP_PIN,START_STEP_WITH_HIGH);
 #endif
             motorX += 2;
         }
         else if(motorX >= 2)
         {
-            WRITE(X_STEP_PIN,HIGH);
+            WRITE(X_STEP_PIN,START_STEP_WITH_HIGH);
 #if FEATURE_TWO_XSTEPPER
-            WRITE(X2_STEP_PIN,HIGH);
+            WRITE(X2_STEP_PIN,START_STEP_WITH_HIGH);
 #endif
             motorX -= 2;
         }
         if(motorYorZ <= -2)
         {
             //ANALYZER_ON(ANALYZER_CH3); // I dont think i can use these as they are for the y - possible bug area though
-            WRITE(Z_STEP_PIN,HIGH);
+            WRITE(Z_STEP_PIN,START_STEP_WITH_HIGH);
 #if FEATURE_TWO_ZSTEPPER
-            WRITE(Z2_STEP_PIN,HIGH);
+            WRITE(Z2_STEP_PIN,START_STEP_WITH_HIGH);
 #endif
             motorYorZ += 2;
         }
         else if(motorYorZ >= 2)
         {
             //ANALYZER_ON(ANALYZER_CH3); // I dont think i can use these as they are for the y - possible bug area though
-            WRITE(Z_STEP_PIN,HIGH);
+            WRITE(Z_STEP_PIN,START_STEP_WITH_HIGH);
 #if FEATURE_TWO_ZSTEPPER
-            WRITE(Z2_STEP_PIN,HIGH);
+            WRITE(Z2_STEP_PIN,START_STEP_WITH_HIGH);
 #endif
             motorYorZ -= 2;
         }
 #endif
     }
+    static INLINE void startXStep()
+    {
+        WRITE(X_STEP_PIN,START_STEP_WITH_HIGH);
+#if FEATURE_TWO_XSTEPPER
+        WRITE(X2_STEP_PIN,START_STEP_WITH_HIGH);
+#endif
+    }
+    static INLINE void startYStep()
+    {
+        WRITE(Y_STEP_PIN,START_STEP_WITH_HIGH);
+#if FEATURE_TWO_YSTEPPER
+        WRITE(Y2_STEP_PIN,START_STEP_WITH_HIGH);
+#endif
+    }
+    static INLINE void startZStep()
+    {
+        WRITE(Z_STEP_PIN,START_STEP_WITH_HIGH);
+#if FEATURE_TWO_ZSTEPPER
+        WRITE(Z2_STEP_PIN,START_STEP_WITH_HIGH);
+#endif
+    }
     static INLINE void endXYZSteps()
     {
-        WRITE(X_STEP_PIN,LOW);
+        WRITE(X_STEP_PIN,!START_STEP_WITH_HIGH);
 #if FEATURE_TWO_XSTEPPER
-        WRITE(X2_STEP_PIN,LOW);
+        WRITE(X2_STEP_PIN,!START_STEP_WITH_HIGH);
 #endif
-        WRITE(Y_STEP_PIN,LOW);
+        WRITE(Y_STEP_PIN,!START_STEP_WITH_HIGH);
 #if FEATURE_TWO_YSTEPPER
-        WRITE(Y2_STEP_PIN,LOW);
+        WRITE(Y2_STEP_PIN,!START_STEP_WITH_HIGH);
 #endif
-        WRITE(Z_STEP_PIN,LOW);
+        WRITE(Z_STEP_PIN,!START_STEP_WITH_HIGH);
 #if FEATURE_TWO_ZSTEPPER
-        WRITE(Z2_STEP_PIN,LOW);
+        WRITE(Z2_STEP_PIN,!START_STEP_WITH_HIGH);
 #endif
     }
     static INLINE speed_t updateStepsPerTimerCall(speed_t vbase)

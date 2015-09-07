@@ -1407,6 +1407,11 @@ void UIDisplay::parse(const char *txt,bool ram)
                 break;
             }
 #endif
+			if(c2 == 'C')	 //Custom coating
+			{
+				addFloat(Printer::zBedOffset, 3, 2);
+				break;
+			}
             // Extruder output level
             if(c2 >= '0' && c2 <= '9') ivalue = pwm_pos[c2 - '0'];
 #if HAVE_HEATED_BED
@@ -2636,7 +2641,10 @@ ZPOS2:
 #if FEATURE_BABYSTEPPING
     {
         previousMillisCmd = HAL::timeInMilliseconds();
-        if((abs((int)Printer::zBabystepsMissing + (increment * BABYSTEP_MULTIPLICATOR))) < 127)
+#if UI_DYNAMIC_ENCODER_SPEED
+        increment /= dynSp; // we need fixed speeds or we get in trouble here!
+#endif
+        if((abs((int)Printer::zBabystepsMissing + (increment * BABYSTEP_MULTIPLICATOR))) < 20000)
         {
             Printer::zBabystepsMissing += increment * BABYSTEP_MULTIPLICATOR;
             zBabySteps += increment * BABYSTEP_MULTIPLICATOR;
@@ -2688,6 +2696,11 @@ ZPOS2:
         Commands::changeFlowrateMultiply(Printer::extrudeMultiply);
     }
     break;
+#if UI_BED_COATING
+    	case UI_ACTION_COATING_CUSTOM:
+		INCREMENT_MIN_MAX(Printer::zBedOffset,0.01,-1.0,199.0);
+    break;
+#endif
     case UI_ACTION_STEPPER_INACTIVE:
     {
         uint8_t inactT = stepperInactiveTime / 60000;
@@ -2705,7 +2718,7 @@ ZPOS2:
     case UI_ACTION_PRINT_ACCEL_X:
     case UI_ACTION_PRINT_ACCEL_Y:
     case UI_ACTION_PRINT_ACCEL_Z:
-#if DRIVE_SYSTEM!=DELTA
+#if DRIVE_SYSTEM != DELTA
         INCREMENT_MIN_MAX(Printer::maxAccelerationMMPerSquareSecond[action - UI_ACTION_PRINT_ACCEL_X],((action == UI_ACTION_PRINT_ACCEL_Z) ? 1 : 100),0,10000);
 #else
         INCREMENT_MIN_MAX(Printer::maxAccelerationMMPerSquareSecond[action - UI_ACTION_PRINT_ACCEL_X],100,0,10000);
@@ -2854,8 +2867,34 @@ ZPOS2:
     return true;
 }
 
+#if UI_BED_COATING
+void UIDisplay::menuAdjustHeight(const UIMenu *men,float offset){
+#if EEPROM_MODE != 0
+		//If there is something to change
+		if (EEPROM::zProbeZOffset() != offset) {
+			HAL::eprSetFloat(EPR_Z_PROBE_Z_OFFSET, offset);
+			EEPROM::storeDataIntoEEPROM(false);
+		}
+#endif
+        Printer::zBedOffset = offset;
+		//Display message
+		pushMenu(men, false);
+		BEEP_SHORT;
+		Printer::homeAxis(true, true, true);
+		Commands::printCurrentPosition(PSTR("UI_ACTION_HOMEALL "));
+		menuLevel = 0;
+		activeAction = 0;
+		UI_STATUS_UPD(UI_TEXT_PRINTER_READY);
+}
+#endif
+
 void UIDisplay::finishAction(int action)
 {
+#if UI_BED_COATING
+    if (action == UI_ACTION_COATING_CUSTOM) {
+		menuAdjustHeight(&ui_menu_coating_custom,Printer::zBedOffset);
+    }
+#endif
 }
 // Actions are events from user input. Depending on the current state, each
 // action can behave differently. Other actions do always the same like home, disable extruder etc.
@@ -3379,6 +3418,26 @@ int UIDisplay::executeAction(int action, bool allowMoves)
         case UI_ACTION_PAUSE:
             Com::printFLN(PSTR("RequestPause:"));
             break;
+#if UI_BED_COATING
+		case UI_ACTION_NOCOATING:
+			menuAdjustHeight(&ui_menu_nocoating_action,0);
+			break;
+		case UI_ACTION_BUILDTAK:
+			menuAdjustHeight(&ui_menu_buildtak_action,0.4);
+			break;
+		case UI_ACTION_KAPTON:
+			menuAdjustHeight(&ui_menu_kapton_action,0.04);
+			break;
+		case UI_ACTION_GLUESTICK:
+			menuAdjustHeight(&ui_menu_gluestick_action,0.04);
+			break;
+		case UI_ACTION_BLUETAPE:
+			menuAdjustHeight(&ui_menu_bluetape_action,0.15);
+			break;
+		case UI_ACTION_PETTAPE:
+			menuAdjustHeight(&ui_menu_pettape_action,0.09);
+			break;
+#endif
 #if FEATURE_AUTOLEVEL
         case UI_ACTION_AUTOLEVEL_ONOFF:
             Printer::setAutolevelActive(!Printer::isAutolevelActive());

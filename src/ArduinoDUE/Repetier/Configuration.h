@@ -58,6 +58,7 @@ setpe per mm and heater manager settings in extruder 0 are used! */
 // Arduino Due with RAMPS-FD V2 = 404
 // Felix Printers for arm       = 405
 // DAM&DICE DUE                 = 406
+// Smart RAMPS for Due          = 408
 // Alligator Board rev1         = 500
 // Alligator Board rev2         = 501
 
@@ -1225,6 +1226,22 @@ See: AdditionalArduinoFiles: README.txt on how to install them.
 #define FEATURE_WATCHDOG 1
 
 /* Z-Probing */
+
+/* After homing the z position is corrected to compensate
+for a bed coating. Since you can change coatings the value is stored in
+eeprom if enabled, so you can switch between different coatings without needing
+to recalibrate z.
+*/
+#define Z_PROBE_Z_OFFSET 0 // offset to coating form real bed level
+/* How is z min measured
+ 0 = trigger is height of real bed neglecting coating
+ 1 = trigger is current coating
+
+ For mode 1 the current coating thickness is added to measured z probe distances.
+ That way the real bed is always the reference height. For inductive sensors
+ or z min endstops the coatng has no effect on the result, so you should use mode 0.
+*/
+#define Z_PROBE_Z_OFFSET_MODE 0
 
 #define FEATURE_Z_PROBE false
 #define Z_PROBE_PIN -1  // 63

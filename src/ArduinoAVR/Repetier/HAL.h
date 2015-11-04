@@ -70,7 +70,9 @@ All known arduino boards use 64. This value is needed for the extruder timing. *
 #endif
 #include <inttypes.h>
 #include "Print.h"
-
+#ifdef EXTERNALSERIAL
+#define SERIAL_RX_BUFFER_SIZE 128
+#endif
 #if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
 #else
@@ -175,8 +177,13 @@ typedef uint8_t ufast8_t;
 
 #define SERIAL_BUFFER_SIZE 128
 #define SERIAL_BUFFER_MASK 127
+#ifdef BIG_OUTPUT_BUFFER
+#define SERIAL_TX_BUFFER_SIZE 128
+#define SERIAL_TX_BUFFER_MASK 127
+#else
 #define SERIAL_TX_BUFFER_SIZE 64
 #define SERIAL_TX_BUFFER_MASK 63
+#endif
 
 struct ring_buffer
 {
@@ -253,6 +260,9 @@ extern RFHardwareSerial RFSerial;
 class HAL
 {
 public:
+#if FEATURE_WATCHDOG
+    static bool wdPinged;
+#endif
     HAL();
     virtual ~HAL();
     static inline void hwSetup(void)
@@ -711,7 +721,7 @@ public:
     inline static void pingWatchdog()
     {
 #if FEATURE_WATCHDOG
-        wdt_reset();
+      wdPinged = true;
 #endif
     };
     inline static float maxExtruderTimerFrequency()

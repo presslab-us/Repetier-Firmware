@@ -21,15 +21,23 @@
 
 #include "Repetier.h"
 
+#if UI_DISPLAY_TYPE != NO_DISPLAY
+uint8_t Com::selectedLanguage;
+#endif
+
+#ifndef MACHINE_TYPE
 #if DRIVE_SYSTEM == DELTA
-FSTRINGVALUE(Com::tFirmware,"FIRMWARE_NAME:Repetier_" REPETIER_VERSION " FIRMWARE_URL:https://github.com/repetier/Repetier-Firmware/ PROTOCOL_VERSION:1.0 MACHINE_TYPE:Delta EXTRUDER_COUNT:" XSTR(NUM_EXTRUDER) " REPETIER_PROTOCOL:3")
+#define MACHINE_TYPE "Delta"
+#elif DRIVE_SYSTEM == CARTESIAN
+#define MACHINE_TYPE "Mendel"
 #else
-#if DRIVE_SYSTEM == CARTESIAN
-FSTRINGVALUE(Com::tFirmware,"FIRMWARE_NAME:Repetier_" REPETIER_VERSION " FIRMWARE_URL:https://github.com/repetier/Repetier-Firmware/ PROTOCOL_VERSION:1.0 MACHINE_TYPE:Mendel EXTRUDER_COUNT:" XSTR(NUM_EXTRUDER) " REPETIER_PROTOCOL:3")
-#else
-FSTRINGVALUE(Com::tFirmware,"FIRMWARE_NAME:Repetier_" REPETIER_VERSION " FIRMWARE_URL:https://github.com/repetier/Repetier-Firmware/ PROTOCOL_VERSION:1.0 MACHINE_TYPE:Core_XY EXTRUDER_COUNT:" XSTR(NUM_EXTRUDER) " REPETIER_PROTOCOL:3")
+#define MACHINE_TYPE "Core_XY"
 #endif
 #endif
+#ifndef FIRMWARE_URL
+#define FIRMWARE_URL "https://github.com/repetier/Repetier-Firmware/"
+#endif // FIRMWARE_URL
+FSTRINGVALUE(Com::tFirmware,"FIRMWARE_NAME:Repetier_" REPETIER_VERSION " FIRMWARE_URL:" FIRMWARE_URL " PROTOCOL_VERSION:1.0 MACHINE_TYPE:" MACHINE_TYPE " EXTRUDER_COUNT:" XSTR(NUM_EXTRUDER) " REPETIER_PROTOCOL:3")
 FSTRINGVALUE(Com::tDebug,"Debug:")
 FSTRINGVALUE(Com::tOk,"ok")
 FSTRINGVALUE(Com::tNewline,"\r\n")
@@ -122,7 +130,6 @@ FSTRINGVALUE(Com::tEEPROMUpdated,"EEPROM updated")
 
 FSTRINGVALUE(Com::tLinearLColon,"linear L:")
 FSTRINGVALUE(Com::tQuadraticKColon," quadratic K:")
-FSTRINGVALUE(Com::tExtruderJam, UI_TEXT_EXTRUDER_JAM)
 FSTRINGVALUE(Com::tFilamentSlipping,"Filament slipping")
 FSTRINGVALUE(Com::tPauseCommunication,"// action:pause")
 FSTRINGVALUE(Com::tContinueCommunication,"// action:resume")
@@ -243,12 +250,15 @@ FSTRINGVALUE(Com::tZProbeOffsetX,"Z-probe offset x [mm]")
 FSTRINGVALUE(Com::tZProbeOffsetY,"Z-probe offset y [mm]")
 FSTRINGVALUE(Com::tZProbeSpeed,"Z-probe speed [mm/s]")
 FSTRINGVALUE(Com::tZProbeSpeedXY,"Z-probe x-y-speed [mm/s]")
-FSTRINGVALUE(Com::tZProbeX1,"Z-probe X1")
-FSTRINGVALUE(Com::tZProbeY1,"Z-probe Y1")
-FSTRINGVALUE(Com::tZProbeX2,"Z-probe X2")
-FSTRINGVALUE(Com::tZProbeY2,"Z-probe Y2")
-FSTRINGVALUE(Com::tZProbeX3,"Z-probe X3")
-FSTRINGVALUE(Com::tZProbeY3,"Z-probe Y3")
+FSTRINGVALUE(Com::tZProbeX1,"Z-probe X1 [mm]")
+FSTRINGVALUE(Com::tZProbeY1,"Z-probe Y1 [mm]")
+FSTRINGVALUE(Com::tZProbeX2,"Z-probe X2 [mm]")
+FSTRINGVALUE(Com::tZProbeY2,"Z-probe Y2 [mm]")
+FSTRINGVALUE(Com::tZProbeX3,"Z-probe X3 [mm]")
+FSTRINGVALUE(Com::tZProbeY3,"Z-probe Y3 [mm]")
+FSTRINGVALUE(Com::zZProbeBendingCorA,"Z-probe bending correction A [mm]")
+FSTRINGVALUE(Com::zZProbeBendingCorB,"Z-probe bending correction B [mm]")
+FSTRINGVALUE(Com::zZProbeBendingCorC,"Z-probe bending correction C [mm]")
 #endif
 #if FEATURE_AXISCOMP
 FSTRINGVALUE(Com::tAxisCompTanXY,"tanXY Axis Compensation")
@@ -268,6 +278,7 @@ FSTRINGVALUE(Com::tEPR1,"EPR:1 ")
 FSTRINGVALUE(Com::tEPR2,"EPR:2 ")
 FSTRINGVALUE(Com::tEPR3,"EPR:3 ")
 FSTRINGVALUE(Com::tEPRBaudrate,"Baudrate")
+FSTRINGVALUE(Com::tLanguage,"Language")
 FSTRINGVALUE(Com::tEPRFilamentPrinted,"Filament printed [m]")
 FSTRINGVALUE(Com::tEPRPrinterActive,"Printer active [s]")
 FSTRINGVALUE(Com::tEPRMaxInactiveTime,"Max. inactive time [ms,0=off]")
@@ -282,6 +293,7 @@ FSTRINGVALUE(Com::tEPRXBacklash,"X backlash [mm]")
 FSTRINGVALUE(Com::tEPRYBacklash,"Y backlash [mm]")
 FSTRINGVALUE(Com::tEPRZBacklash,"Z backlash [mm]")
 FSTRINGVALUE(Com::tEPRMaxJerk,"Max. jerk [mm/s]")
+FSTRINGVALUE(Com::tEPRAccelerationFactorAtTop,"Acceleration factor at top [%,100=like bottom]")
 #if DRIVE_SYSTEM==DELTA
 FSTRINGVALUE(Com::tEPRZAcceleration,"Acceleration [mm/s^2]")
 FSTRINGVALUE(Com::tEPRZTravelAcceleration,"Travel acceleration [mm/s^2]")
@@ -358,8 +370,8 @@ FSTRINGVALUE(Com::tEPRAdvanceL,"advance L [0=off]")
 
 #endif
 #if SDSUPPORT
-FSTRINGVALUE(Com::tSDRemoved,UI_TEXT_SD_REMOVED)
-FSTRINGVALUE(Com::tSDInserted,UI_TEXT_SD_INSERTED)
+//FSTRINGVALUE(Com::tSDRemoved,UI_TEXT_SD_REMOVED)
+//FSTRINGVALUE(Com::tSDInserted,UI_TEXT_SD_INSERTED)
 FSTRINGVALUE(Com::tSDInitFail,"SD init fail")
 FSTRINGVALUE(Com::tErrorWritingToFile,"error writing to file")
 FSTRINGVALUE(Com::tBeginFileList,"Begin file list")
@@ -590,3 +602,4 @@ void Com::printFloat(float number, uint8_t digits)
     remainder -= toPrint;
   }
 }
+

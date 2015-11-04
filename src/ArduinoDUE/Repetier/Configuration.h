@@ -205,9 +205,12 @@ Overridden if EEPROM activated.*/
 // 3 is mendel-parts thermistor (EPCOS G550)
 // 4 is 10k thermistor
 // 8 is ATC Semitec 104GT-2
+// 13 is PT100 for E3D/Ultimaker
 // 5 is userdefined thermistor table 0
 // 6 is userdefined thermistor table 1
 // 7 is userdefined thermistor table 2
+// 12 is 100k RS thermistor 198-961
+// 13 is PT100 for E3D/Ultimaker
 // 50 is userdefined thermistor table 0 for PTC thermistors
 // 51 is userdefined thermistor table 0 for PTC thermistors
 // 52 is userdefined thermistor table 0 for PTC thermistors
@@ -463,6 +466,15 @@ Retractions speeds are taken from RETRACTION_SPEED and RETRACTION_UNDO_SPEED
 #define FILAMENTCHANGE_SHORTRETRACT 30
 #define FILAMENTCHANGE_LONGRETRACT 30
 
+/* Define how we detect jam/out of filament
+   1 = Distance between signal changes increase
+   2 = signal gets high
+   3 = signal gets low
+   
+   2 and 3 are not jam detections, but only out of filament detection by a switch
+   that changes the signal! 
+*/
+#define JAM_METHOD 1
 // Steps normally needed for a full signal cycle.
 #define JAM_STEPS 220
 // Steps for reducing speed. Must be higher then JAM_STEPS
@@ -732,6 +744,11 @@ on this endstop.
 #define DISABLE_Y false
 #define DISABLE_Z false
 #define DISABLE_E false
+/* If you want to keep z motor running on stepper timeout, remove comments below.
+  This may be usefull if your z bed moves when motors are disabled. Will still
+  turn z off when heaters get also disabled. 
+*/
+//#define PREVENT_Z_DISABLE_ON_STEPPER_TIMEOUT
 
 // Inverting axis direction
 #define INVERT_X_DIR false
@@ -1015,6 +1032,20 @@ for some printers causing an early stall.
 #define MAX_TRAVEL_ACCELERATION_UNITS_PER_SQ_SECOND_Y 4000
 #define MAX_TRAVEL_ACCELERATION_UNITS_PER_SQ_SECOND_Z 4000
 
+/** If you print on a moving bed, it can become more shaky the higher and bigger
+ your print gets. Therfore it might be helpfull to reduce acceleration with
+ increasing print height. You can define here how acceleration should change.
+ You set ACCELERATION_FACTOR_TOP to the factor in percent for the top position
+ of your printer. Acceleration will then be modified linear over height.
+ INTERPOLATE_ACCELERATION_WITH_Z sets, which accelerations get changed:
+ 0 = do not interpolate at all
+ 1 = interpolate x and y acceleration
+ 2 = interpolate z acceleration
+ 3 = interpolate x,y and z acceleration
+  */
+#define INTERPOLATE_ACCELERATION_WITH_Z 0
+#define ACCELERATION_FACTOR_TOP 100
+
 /** \brief Maximum allowable jerk.
 
 Caution: This is no real jerk in a physical meaning.
@@ -1182,6 +1213,11 @@ instead of driving both with a single stepper. The same works for the other axis
 #define Z2_DIR_PIN    E1_DIR_PIN
 #define Z2_ENABLE_PIN E1_ENABLE_PIN
 
+#define FEATURE_THREE_ZSTEPPER 0
+#define Z3_STEP_PIN   E2_STEP_PIN
+#define Z3_DIR_PIN    E2_DIR_PIN
+#define Z3_ENABLE_PIN E2_ENABLE_PIN
+
 /* Ditto printing allows 2 extruders to do the same action. This effectively allows
 to print an object two times at the speed of one. Works only with dual extruder setup.
 */
@@ -1276,6 +1312,14 @@ to recalibrate z.
 #define Z_PROBE_Y2 -40
 #define Z_PROBE_X3 0
 #define Z_PROBE_Y3 80
+/* Bending correction adds a value to a measured z-probe value. This may be
+  required when the z probe needs some force to trigger and this bends the
+  bed down. Currently the correction values A/B/C correspond to z probe
+  positions 1/2/3. In later versions a bending correction algorithm might be
+  introduced to give it other meanings.*/
+#define BENDING_CORRECTION_A 0
+#define BENDING_CORRECTION_B 0
+#define BENDING_CORRECTION_C 0
 
 /* DISTORTION_CORRECTION compensates the distortion caused by mechanical imprecisions of nonlinear (i.e. DELTA) printers
  * assumes that the floor is plain (i.e. glass plate)
@@ -1399,19 +1443,21 @@ The following settings override uiconfig.h!
 */
 #define FEATURE_CONTROLLER CONTROLLER_RADDS
 
+
 /**
-Select the language to use.
-0 = English
-1 = German
-2 = Dutch
-3 = Brazilian portuguese
-4 = Italian
-5 = Spanish
-6 = Swedish
-7 = French
-8 = Czech
-*/
-#define UI_LANGUAGE 1
+Select the languages to use. On first startup user can select
+the language from a menu with activated languages. In Configuration->Language
+the language can be switched any time. */
+#define LANGUAGE_EN_ACTIVE 1 // English
+#define LANGUAGE_DE_ACTIVE 1 // German
+#define LANGUAGE_NL_ACTIVE 1 // Dutch
+#define LANGUAGE_PT_ACTIVE 1 // Brazilian portuguese
+#define LANGUAGE_IT_ACTIVE 1 // Italian
+#define LANGUAGE_ES_ACTIVE 1 // Spanish
+#define LANGUAGE_SE_ACTIVE 1 // Swedish
+#define LANGUAGE_FR_ACTIVE 1 // French
+#define LANGUAGE_CZ_ACTIVE 1 // Czech
+#define LANGUAGE_PL_ACTIVE 1 // Polish
 
 /* Some displays loose their settings from time to time. Try uncommenting the 
 autorepair function if this is the case. It is not supported for all display

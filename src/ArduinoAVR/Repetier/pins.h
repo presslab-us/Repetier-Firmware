@@ -612,6 +612,7 @@ STEPPER_CURRENT_CONTROL
 #define MOSI_PIN         51
 #define SDPOWER          -1
 #define SDSS             53
+#define SDCARDETECT	    38
 
 #define E0_PINS ORIG_E0_STEP_PIN,ORIG_E0_DIR_PIN,ORIG_E0_ENABLE_PIN,
 #define E1_PINS ORIG_E1_STEP_PIN,ORIG_E1_DIR_PIN,ORIG_E1_ENABLE_PIN,
@@ -1963,9 +1964,9 @@ STEPPER_CURRENT_CONTROL
 #define ORIG_PS_ON_PIN 12
 //#define KILL_PIN -1
 
-#define HEATER_0_PIN 9 // EXTRUDER 1
-#define HEATER_2_PIN 8 // EXTRUDER 2
-#define HEATER_3_PIN 2 // EXTRUDER 3
+#define HEATER_0_PIN 2 // EXTRUDER 0 - changed 10-9-2015
+#define HEATER_2_PIN 9 // EXTRUDER 1 - changed 10-9-2015
+#define HEATER_3_PIN 8 // EXTRUDER 2 - changed 10-9-2015
 #define HEATER_1_PIN 10 // heater bed
 
 /*
@@ -2512,12 +2513,16 @@ S3(ext)=9
 #define FAN_BOARD_PIN -1
 #endif
 
+#ifndef E2_PINS
+#define E2_PINS
+#endif
+
 #if NUM_EXTRUDER==1
 #undef E1_PINS
 #define E1_PINS
 #endif
 
-#if NUM_EXTRUDER<3
+#if NUM_EXTRUDER < 3
 #undef E2_PINS
 #define E2_PINS
 #endif

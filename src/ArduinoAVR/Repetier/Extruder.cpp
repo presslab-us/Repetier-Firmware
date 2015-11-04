@@ -68,6 +68,7 @@ void Extruder::manageTemperatures()
     uint8_t errorDetected = 0;
     bool hot = false;
     millis_t time = HAL::timeInMilliseconds(); // compare time for decouple tests
+#if NUM_TEMPERATURE_LOOPS > 0
     for(uint8_t controller = 0; controller < NUM_TEMPERATURE_LOOPS; controller++)
     {
         TemperatureController *act = tempController[controller];
@@ -295,6 +296,8 @@ void Extruder::manageTemperatures()
 #endif
         Printer::debugLevel |= 8; // Go into dry mode
     } // any sensor defect
+    #endif
+
 }
 
 void TemperatureController::waitForTargetTemperature()
@@ -586,6 +589,7 @@ void Extruder::selectExtruderById(uint8_t extruderId)
 
 void Extruder::setTemperatureForExtruder(float temperatureInCelsius, uint8_t extr, bool beep, bool wait)
 {
+#if NUM_EXTRUDER > 0
 #if MIXING_EXTRUDER
     extr = 0; // map any virtual extruder number to 0
 #endif // MIXING_EXTRUDER
@@ -611,12 +615,14 @@ void Extruder::setTemperatureForExtruder(float temperatureInCelsius, uint8_t ext
     {
         TemperatureController *tc2 = tempController[1];
         tc2->setTargetTemperature(temperatureInCelsius);
+        tc2->updateTempControlVars();
         if(temperatureInCelsius >= EXTRUDER_FAN_COOL_TEMP) extruder[1].coolerPWM = extruder[1].coolerSpeed;
 #if NUM_EXTRUDER > 2
         if(Extruder::dittoMode > 1 && extr == 0)
         {
             TemperatureController *tc2 = tempController[2];
             tc2->setTargetTemperature(temperatureInCelsius);
+            tc2->updateTempControlVars();
             if(temperatureInCelsius >= EXTRUDER_FAN_COOL_TEMP) extruder[2].coolerPWM = extruder[2].coolerSpeed;
         }
 #endif
@@ -625,6 +631,7 @@ void Extruder::setTemperatureForExtruder(float temperatureInCelsius, uint8_t ext
         {
             TemperatureController *tc2 = tempController[3];
             tc2->setTargetTemperature(temperatureInCelsius);
+            tc2->updateTempControlVars();
             if(temperatureInCelsius >= EXTRUDER_FAN_COOL_TEMP) extruder[3].coolerPWM = extruder[3].coolerSpeed;
         }
 #endif
@@ -637,7 +644,7 @@ void Extruder::setTemperatureForExtruder(float temperatureInCelsius, uint8_t ext
       )
     {
         Extruder *actExtruder = &extruder[extr];
-        UI_STATUS_UPD(UI_TEXT_HEATING_EXTRUDER);
+        UI_STATUS_UPD_F(Com::translatedF(UI_TEXT_HEATING_EXTRUDER_ID));
         EVENT_WAITING_HEATER(actExtruder->id);
         bool dirRising = actExtruder->tempControl.targetTemperature > actExtruder->tempControl.currentTemperature;
         millis_t printedTime = HAL::timeInMilliseconds();
@@ -698,6 +705,7 @@ void Extruder::setTemperatureForExtruder(float temperatureInCelsius, uint8_t ext
         Printer::filamentPrinted = 0;  // new print, new counter
         Printer::flag2 &= ~PRINTER_FLAG2_RESET_FILAMENT_USAGE;
     }
+#endif
 }
 
 void Extruder::setHeatedBedTemperature(float temperatureInCelsius,bool beep)
@@ -1285,7 +1293,7 @@ const short temptable_4[NUMTEMPS_4][2] PROGMEM =
     {478*4, 46*8},{531*4, 41*8},{584*4, 35*8},{637*4, 30*8},{690*4, 25*8},{743*4, 20*8},{796*4, 14*8},{849*4, 7*8},{902*4, 0*8},
     {955*4, -11*8},{1008*4, -35*8}
 };
-
+// ATC 104GT
 #define NUMTEMPS_8 34
 const short temptable_8[NUMTEMPS_8][2] PROGMEM =
 {
@@ -1327,6 +1335,12 @@ const short temptable_12[NUMTEMPS_12][2] PROGMEM =
     {351*4, 140*8},{386*4, 134*8},{421*4, 128*8},{456*4, 122*8},{491*4, 117*8},{526*4, 112*8},{561*4, 107*8},{596*4, 102*8},{631*4, 97*8},{666*4, 91*8},
     {701*4, 86*8},{736*4, 81*8},{771*4, 76*8},{806*4, 70*8},{841*4, 63*8},{876*4, 56*8},{911*4, 48*8},{946*4, 38*8},{981*4, 23*8},{1005*4, 5*8},{1016*4, 0*8}
 };
+#define NUMTEMPS_13 19
+const short temptable_13[NUMTEMPS_13][2] PROGMEM =
+{
+    {0,0},{908,8},{942,10*8},{982,20*8},{1015,8*30},{1048,8*40},{1080,8*50},{1113,8*60},{1146,8*70},{1178,8*80},{11211,8*90},{1276,8*110},{1318,8*120}
+    ,{1670,8*230},{2455,8*500},{3445,8*900},{3666,8*1000},{3871,8*1100},{4095,8*2000}
+};
 #if NUM_TEMPS_USERTHERMISTOR0 > 0
 const short temptable_5[NUM_TEMPS_USERTHERMISTOR0][2] PROGMEM = USER_THERMISTORTABLE0 ;
 #endif
@@ -1336,7 +1350,7 @@ const short temptable_6[NUM_TEMPS_USERTHERMISTOR1][2] PROGMEM = USER_THERMISTORT
 #if NUM_TEMPS_USERTHERMISTOR2 > 0
 const short temptable_7[NUM_TEMPS_USERTHERMISTOR2][2] PROGMEM = USER_THERMISTORTABLE2 ;
 #endif
-const short * const temptables[12] PROGMEM = {(short int *)&temptable_1[0][0],(short int *)&temptable_2[0][0],(short int *)&temptable_3[0][0],(short int *)&temptable_4[0][0]
+const short * const temptables[13] PROGMEM = {(short int *)&temptable_1[0][0],(short int *)&temptable_2[0][0],(short int *)&temptable_3[0][0],(short int *)&temptable_4[0][0]
 #if NUM_TEMPS_USERTHERMISTOR0 > 0
         ,(short int *)&temptable_5[0][0]
 #else
@@ -1357,9 +1371,10 @@ const short * const temptables[12] PROGMEM = {(short int *)&temptable_1[0][0],(s
         ,(short int *)&temptable_10[0][0]
         ,(short int *)&temptable_11[0][0]
         ,(short int *)&temptable_12[0][0]
+        ,(short int *)&temptable_13[0][0]
                                              };
-const uint8_t temptables_num[12] PROGMEM = {NUMTEMPS_1,NUMTEMPS_2,NUMTEMPS_3,NUMTEMPS_4,NUM_TEMPS_USERTHERMISTOR0,NUM_TEMPS_USERTHERMISTOR1,NUM_TEMPS_USERTHERMISTOR2,NUMTEMPS_8,
-                                 NUMTEMPS_9,NUMTEMPS_10,NUMTEMPS_11,NUMTEMPS_12
+const uint8_t temptables_num[13] PROGMEM = {NUMTEMPS_1,NUMTEMPS_2,NUMTEMPS_3,NUMTEMPS_4,NUM_TEMPS_USERTHERMISTOR0,NUM_TEMPS_USERTHERMISTOR1,NUM_TEMPS_USERTHERMISTOR2,NUMTEMPS_8,
+                                 NUMTEMPS_9,NUMTEMPS_10,NUMTEMPS_11,NUMTEMPS_12,NUMTEMPS_13
                                            };
 
 
@@ -1390,6 +1405,7 @@ void TemperatureController::updateCurrentTemperature()
     case 99:
         currentTemperature = (1023 << (2 - ANALOG_REDUCE_BITS)) - (osAnalogInputValues[sensorPin] >> (ANALOG_REDUCE_BITS)); // Convert to 10 bit result
         break;
+    case 13: // PT100 E3D
     case 50: // User defined PTC table
     case 51:
     case 52:
@@ -1433,13 +1449,13 @@ void TemperatureController::updateCurrentTemperature()
     case 12:
     {
         type--;
-        uint8_t num = pgm_read_byte(&temptables_num[type])<<1;
-        uint8_t i=2;
+        uint8_t num = pgm_read_byte(&temptables_num[type]) << 1;
+        uint8_t i = 2;
         const short *temptable = (const short *)pgm_read_word(&temptables[type]); //pgm_read_word_near(&temptables[type]);
         short oldraw = pgm_read_word(&temptable[0]);
         short oldtemp = pgm_read_word(&temptable[1]);
         short newraw,newtemp;
-        currentTemperature = (1023<<(2-ANALOG_REDUCE_BITS))-currentTemperature;
+        currentTemperature = (1023 << (2 - ANALOG_REDUCE_BITS)) - currentTemperature;
         while(i<num)
         {
             newraw = pgm_read_word(&temptable[i++]);
@@ -1448,7 +1464,7 @@ void TemperatureController::updateCurrentTemperature()
             {
                 //OUT_P_I("RC O:",oldtemp);OUT_P_I_LN(" OR:",oldraw);
                 //OUT_P_I("RC N:",newtemp);OUT_P_I_LN(" NR:",newraw);
-                currentTemperatureC = TEMP_INT_TO_FLOAT(oldtemp + (float)(currentTemperature-oldraw)*(float)(newtemp-oldtemp)/(newraw-oldraw));
+                currentTemperatureC = TEMP_INT_TO_FLOAT(oldtemp + (float)(currentTemperature-oldraw)*(float)(newtemp - oldtemp) / (newraw - oldraw));
                 return;
             }
             oldtemp = newtemp;
@@ -1458,13 +1474,17 @@ void TemperatureController::updateCurrentTemperature()
         currentTemperatureC = TEMP_INT_TO_FLOAT(newtemp);
     }
     break;
+    case 13:
     case 50: // User defined PTC thermistor
     case 51:
     case 52:
     {
-        type-=46;
-        uint8_t num = pgm_read_byte(&temptables_num[type])<<1;
-        uint8_t i=2;
+        if(type > 49)
+            type -= 46;
+        else
+            type--;
+        uint8_t num = pgm_read_byte(&temptables_num[type]) << 1;
+        uint8_t i = 2;
         const short *temptable = (const short *)pgm_read_word(&temptables[type]); //pgm_read_word_near(&temptables[type]);
         short oldraw = pgm_read_word(&temptable[0]);
         short oldtemp = pgm_read_word(&temptable[1]);
@@ -1613,24 +1633,28 @@ void TemperatureController::setTargetTemperature(float target)
         targetTemperature = (1023<<(2-ANALOG_REDUCE_BITS))-newraw;
         break;
     }
+    case 13: // PT100 E3D
     case 50: // user defined PTC thermistor
     case 51:
     case 52:
     {
-        type -= 46;
+        if(type > 49)
+            type -= 46;
+        else
+            type--;
         uint8_t num = pgm_read_byte(&temptables_num[type]) << 1;
         uint8_t i = 2;
         const short *temptable = (const short *)pgm_read_word(&temptables[type]); //pgm_read_word(&temptables[type]);
         short oldraw = pgm_read_word(&temptable[0]);
         short oldtemp = pgm_read_word(&temptable[1]);
         short newraw = 0,newtemp;
-        while(i<num)
+        while(i < num)
         {
             newraw = pgm_read_word(&temptable[i++]);
             newtemp = pgm_read_word(&temptable[i++]);
             if (newtemp > temp)
             {
-                targetTemperature = oldraw + (int32_t)(oldtemp-temp) * (int32_t)(oldraw-newraw) / (oldtemp-newtemp);
+                targetTemperature = oldraw + (int32_t)(oldtemp - temp) * (int32_t)(oldraw - newraw) / (oldtemp-newtemp);
                 return;
             }
             oldtemp = newtemp;
@@ -1701,13 +1725,15 @@ void TemperatureController::setTargetTemperature(float target)
 uint8_t autotuneIndex = 255;
 void Extruder::disableAllHeater()
 {
-    for(uint8_t i=0; i<NUM_TEMPERATURE_LOOPS; i++)
+#if NUM_TEMPERATURE_LOOPS > 0
+    for(uint8_t i = 0; i < NUM_TEMPERATURE_LOOPS; i++)
     {
         TemperatureController *c = tempController[i];
         c->targetTemperature = 0;
         c->targetTemperatureC = 0;
         pwm_pos[c->pwmIndex] = 0;
     }
+#endif
     autotuneIndex = 255;
 }
 
@@ -1869,6 +1895,7 @@ void writeMonitor()
 
 bool reportTempsensorError()
 {
+#if NUM_TEMPERATURE_LOOPS > 9
     if(!Printer::isAnyTempsensorDefect()) return false;
     for(uint8_t i = 0; i < NUM_TEMPERATURE_LOOPS; i++)
     {
@@ -1882,6 +1909,9 @@ bool reportTempsensorError()
     }
     Com::printErrorFLN(Com::tDryModeUntilRestart);
     return true;
+#else
+    return false;
+#endif
 }
 
 #ifdef SUPPORT_MAX6675
@@ -2188,6 +2218,7 @@ TemperatureController heatedBedController = {NUM_EXTRUDER,HEATED_BED_SENSOR_TYPE
 #define NUM_TEMPERATURE_LOOPS NUM_EXTRUDER
 #endif
 
+#if NUM_TEMPERATURE_LOOPS > 0
 TemperatureController *tempController[NUM_TEMPERATURE_LOOPS] =
 {
 #if NUM_EXTRUDER>0
@@ -2216,4 +2247,4 @@ TemperatureController *tempController[NUM_TEMPERATURE_LOOPS] =
 #endif
 #endif
 };
-
+#endif

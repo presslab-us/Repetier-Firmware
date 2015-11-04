@@ -161,6 +161,7 @@ void Commands::printCurrentPosition(FSTRINGPARAM(s))
 
 void Commands::printTemperatures(bool showRaw)
 {
+#if NUM_EXTRUDER > 0
     float temp = Extruder::current->tempControl.currentTemperatureC;
 #if HEATED_BED_SENSOR_TYPE == 0
     Com::printF(Com::tTColon,temp);
@@ -198,8 +199,15 @@ void Commands::printTemperatures(bool showRaw)
             Com::printF(Com::tColon,(1023 << (2 - ANALOG_REDUCE_BITS)) - extruder[i].tempControl.currentTemperature);
         }
     }
+#else if NUM_EXTRUDER == 1
+    if(showRaw)
+    {
+            Com::printF(Com::tSpaceRaw,(int)0);
+            Com::printF(Com::tColon,(1023 << (2 - ANALOG_REDUCE_BITS)) - extruder[0].tempControl.currentTemperature);
+    }
 #endif
     Com::println();
+#endif
 }
 void Commands::changeFeedrateMultiply(int factor)
 {
@@ -252,9 +260,10 @@ void Commands::reportPrinterUsage()
     Com::printF(Com::tPrintedFilament, dist, 2);
     Com::printF(Com::tSpacem);
     bool alloff = true;
+#if NUM_EXTRUDER > 0
     for(uint8_t i = 0; i < NUM_EXTRUDER; i++)
         if(tempController[i]->targetTemperatureC > 15) alloff = false;
-
+#endif
     int32_t seconds = (alloff ? 0 : (HAL::timeInMilliseconds() - Printer::msecondsPrinting) / 1000) + HAL::eprGetInt32(EPR_PRINTING_TIME);
     int32_t tmp = seconds / 86400;
     seconds -= tmp * 86400;
@@ -1034,7 +1043,7 @@ void Commands::processGCode(GCode *com)
             Printer::homeAxis(true,true,true);
 #else
             Printer::currentPositionSteps[Z_AXIS] = sum * Printer::axisStepsPerMM[Z_AXIS];
-            Printer::zLength = Printer::runZMaxProbe() + sum-ENDSTOP_Z_BACK_ON_HOME;
+            Printer::zLength = Printer::runZMaxProbe() + sum - ENDSTOP_Z_BACK_ON_HOME;
 #endif
             Com::printInfoFLN(Com::tZProbeZReset);
             Com::printFLN(Com::tZProbePrinterHeight,Printer::zLength);
@@ -1099,18 +1108,6 @@ void Commands::processGCode(GCode *com)
         Printer::moveTo(EEPROM::zProbeX3(),EEPROM::zProbeY3(),IGNORE_COORDINATE,IGNORE_COORDINATE,EEPROM::zProbeXYSpeed());
         h3 = Printer::runZProbe(false,true);
         if(h3 < -1) break;
-        // Zprobe with force feedback may bed bed differently for different points.
-        // these settings allow correction of the bending distance so leveling is correct afterwards.
-        // Values are normally negative with bending amount on trigger.
-#ifdef ZPROBE_1_BENDING_CORRECTION
-        h1 += ZPROBE_1_BENDING_CORRECTION;
-#endif
-#ifdef ZPROBE_2_BENDING_CORRECTION
-        h2 += ZPROBE_2_BENDING_CORRECTION;
-#endif
-#ifdef ZPROBE_3_BENDING_CORRECTION
-        h3 += ZPROBE_3_BENDING_CORRECTION;
-#endif
 #if defined(MOTORIZED_BED_LEVELING) && defined(NUM_MOTOR_DRIVERS) && NUM_MOTOR_DRIVERS >= 2
         // h1 is reference heights, h2 => motor 0, h3 => motor 1
         h2 -= h1;
@@ -1345,6 +1342,7 @@ void Commands::processGCode(GCode *com)
             EEPROM::setDeltaTowerZOffsetSteps(offz);
         }
 #endif
+        PrintLine::moveRelativeDistanceInSteps(0, 0, -5*Printer::axisStepsPerMM[Z_AXIS], 0, Printer::homingFeedrate[Z_AXIS], true, true);
         Printer::homeAxis(true,true,true);
     }
     break;
@@ -1364,17 +1362,18 @@ void Commands::processGCode(GCode *com)
 // similar to comment above, this will get a different answer from any different starting point
 // so it is unclear how this is helpful. It must start at a well defined point.
         Printer::deltaMoveToTopEndstops(Printer::homingFeedrate[Z_AXIS]);
-        int32_t offx = HOME_DISTANCE_STEPS-Printer::stepsRemainingAtXHit;
-        int32_t offy = HOME_DISTANCE_STEPS-Printer::stepsRemainingAtYHit;
-        int32_t offz = HOME_DISTANCE_STEPS-Printer::stepsRemainingAtZHit;
+        int32_t offx = HOME_DISTANCE_STEPS - Printer::stepsRemainingAtXHit;
+        int32_t offy = HOME_DISTANCE_STEPS - Printer::stepsRemainingAtYHit;
+        int32_t offz = HOME_DISTANCE_STEPS - Printer::stepsRemainingAtZHit;
         Com::printFLN(Com::tTower1,offx);
         Com::printFLN(Com::tTower2,offy);
         Com::printFLN(Com::tTower3,offz);
         Printer::setAutolevelActive(oldAuto);
+        PrintLine::moveRelativeDistanceInSteps(0, 0, Printer::axisStepsPerMM[Z_AXIS] * -ENDSTOP_Z_BACK_MOVE, 0, Printer::homingFeedrate[Z_AXIS] / ENDSTOP_X_RETEST_REDUCTION_FACTOR, true, false);
         Printer::homeAxis(true,true,true);
     }
     break;
-    case 134: // G134
+    case 135: // G135
         Com::printF(PSTR("CompDelta:"),Printer::currentDeltaPositionSteps[A_TOWER]);
         Com::printF(Com::tComma,Printer::currentDeltaPositionSteps[B_TOWER]);
         Com::printFLN(Com::tComma,Printer::currentDeltaPositionSteps[C_TOWER]);
@@ -1389,6 +1388,31 @@ void Commands::processGCode(GCode *com)
         break;
 
 #endif // DRIVE_SYSTEM
+#if FEATURE_Z_PROBE
+    case 134: // - G134 Px Sx Zx - Calibrate nozzle height difference (need z probe in nozzle!) Px = reference extruder, Sx = only measure extrude x against reference, Zx = add to measured z distance for Sx for correction.
+        {
+            float z = com->hasZ() ? com->Z : 0;
+            int p = com->hasP() ? com->P : 0;
+            int s = com->hasS() ? com->S : -1;
+            extruder[p].zOffset = 0;
+            Extruder::selectExtruderById(p);
+            float refHeight = Printer::runZProbe(true,false,true);
+            for(int i = 0;i < NUM_EXTRUDER;i++) {
+                if(i == p) continue;
+                if(s >= 0 && i != s) continue;
+                extruder[i].zOffset = 0;
+                Extruder::selectExtruderById(i);
+                float height = Printer::runZProbe(false,false);
+                extruder[i].zOffset = (height - refHeight + z)*Printer::axisStepsPerMM[Z_AXIS];
+            }
+            Extruder::selectExtruderById(p);
+            Printer::runZProbe(false,true);
+#if EEPROM_MODE != 0
+            EEPROM::storeDataIntoEEPROM(0);
+#endif
+        }
+        break;
+#endif
 #if defined(NUM_MOTOR_DRIVERS) && NUM_MOTOR_DRIVERS > 0
     case 201:
         commandG201(*com);
@@ -1689,7 +1713,7 @@ void Commands::processMCode(GCode *com)
     case 190: // M190 - Wait bed for heater to reach target.
 #if HAVE_HEATED_BED
         if(Printer::debugDryrun()) break;
-        UI_STATUS_UPD(UI_TEXT_HEATING_BED);
+        UI_STATUS_UPD_F(Com::translatedF(UI_TEXT_HEATING_BED_ID));
         Commands::waitUntilEndOfAllMoves();
 #if HAVE_HEATED_BED
         if (com->hasS()) Extruder::setHeatedBedTemperature(com->S,com->hasF() && com->F > 0);
@@ -1713,6 +1737,7 @@ void Commands::processMCode(GCode *com)
         UI_CLEAR_STATUS;
         previousMillisCmd = HAL::timeInMilliseconds();
         break;
+#if NUM_TEMPERATURE_LOOPS > 0
     case 116: // Wait for temperatures to reach target temperature
         for(fast8_t h = 0; h < NUM_TEMPERATURE_LOOPS; h++)
         {
@@ -1721,7 +1746,7 @@ void Commands::processMCode(GCode *com)
             EVENT_HEATING_FINISHED(h < NUM_EXTRUDER ? h : -1);
         }
         break;
-
+#endif
 #if FAN_PIN>-1 && FEATURE_FAN_CONTROL
     case 106: // M106 Fan On
         if(!(Printer::flag2 & PRINTER_FLAG2_IGNORE_M106_COMMAND))
@@ -1742,15 +1767,14 @@ void Commands::processMCode(GCode *com)
         }
         if(Printer::debugDryrun())   // simulate movements without printing
         {
-            Extruder::setTemperatureForExtruder(0, 0);
-#if NUM_EXTRUDER>1
+#if NUM_EXTRUDER > 1
             for(uint8_t i = 0; i < NUM_EXTRUDER; i++)
                 Extruder::setTemperatureForExtruder(0, i);
 #else
             Extruder::setTemperatureForExtruder(0, 0);
 #endif
-#if HEATED_BED_TYPE!=0
-            target_bed_raw = 0;
+#if HEATED_BED_TYPE != 0
+            Extruder::setHeatedBedTemperature(0,false);
 #endif
         }
         break;
@@ -2251,6 +2275,31 @@ void Commands::processMCode(GCode *com)
         dacCommitEeprom();
 #endif
         break;
+#if 0 && UI_DISPLAY_TYPE != NO_DISPLAY
+    // some debuggingcommands normally disabled
+    case 888:
+        Com::printFLN(PSTR("Selected language:"),(int)Com::selectedLanguage);
+        Com::printF(PSTR("Translation:"));
+        Com::printFLN(Com::translatedF(0));
+        break;
+    case 889:
+        uid.showLanguageSelectionWizard();
+        break;
+    case 890:
+        {
+            if(com->hasX() && com->hasY()) {
+                float c = Printer::bendingCorrectionAt(com->X,com->Y);
+                Com::printF(PSTR("Bending at ("),com->X);
+                Com::printF(PSTR(","),com->Y);
+                Com::printFLN(PSTR(") = "),c);
+            }
+        }
+        break;
+    case 891:
+        if(com->hasS())
+            EEPROM::setVersion(com->S);
+        break;
+#endif
     default:
         if(!EVENT_UNHANDLED_M_CODE(com) && Printer::debugErrors())
         {
